@@ -1,8 +1,11 @@
 import './App.css'
+import './Projects.css';
+import './ProjectDashboard.css';
 
 import Projects from "./Pages/Projects"
 import ProjectDashboard from "./Pages/ProjectDashboard"
 import Plans from "./Pages/Plans"
+import NewProject from "./Pages/NewProject";
 import PunchItem from "./Pages/PunchItem"
 import PunchList from "./Pages/PunchList"
 import Team from "./Pages/Team"
@@ -91,8 +94,9 @@ function App() {
         <main className="main-content">
 
           <header className="top-bar">
+            <h1>TEST CONTENT</h1>
 
-            <h1>Settings</h1>
+            <h1>Settinnngs</h1>
 
             <div className="top-user">
 
@@ -127,6 +131,13 @@ function App() {
               path="/projects/1"
               element={<ProjectDashboard />}
             />
+
+<Route
+  path="/test"
+  element={<h1>ROUTING WORKS!</h1>}
+/>
+
+            <Route path="/projects/new" element={<NewProject />} />
 
             <Route
               path="/projects/1/plans"

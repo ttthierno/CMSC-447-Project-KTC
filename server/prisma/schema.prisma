@@ -1,0 +1,38 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Project {
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String?
+  createdAt   DateTime  @default(now())
+  drawings    Drawing[]
+  punchItems  PunchItem[]
+}
+
+model Drawing {
+  id        Int      @id @default(autoincrement())
+  name      String
+  fileUrl   String?
+  projectId Int
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model PunchItem {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  status      String   @default("OPEN")
+  priority    String   @default("MEDIUM")
+  projectId   Int
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
