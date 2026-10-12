@@ -8,6 +8,7 @@ type Project = {
   description: string | null;
   drawings: { id: number }[];
   punchItems: { id: number }[];
+  members: { id: number }[];
 };
 
 function Projects() {
@@ -135,7 +136,7 @@ function Projects() {
                 </div>
 
                 <div>
-                  <strong>—</strong>
+                  <strong>{project.members?.length ?? 0}</strong>
                   <span>Members</span>
                 </div>
               </div>

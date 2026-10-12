@@ -2,6 +2,8 @@ import './App.css'
 import './Projects.css';
 import './ProjectDashboard.css';
 
+import Login from "./Pages/Login";
+import Signup from "./Pages/Signup";
 import Projects from "./Pages/Projects"
 import ProjectDashboard from "./Pages/ProjectDashboard"
 import Plans from "./Pages/Plans"
@@ -96,7 +98,7 @@ function App() {
           <header className="top-bar">
             <h1>TEST CONTENT</h1>
 
-            <h1>Settinnngs</h1>
+            <h1>Settinnngsss</h1>
 
             <div className="top-user">
 
@@ -120,6 +122,9 @@ function App() {
 
           <Routes>
 
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+
             <Route path="/" element={<Home />} />
 
             <Route
@@ -128,7 +133,7 @@ function App() {
             />
 
             <Route
-              path="/projects/1"
+              path="/projects/:id"
               element={<ProjectDashboard />}
             />
 
@@ -140,22 +145,27 @@ function App() {
             <Route path="/projects/new" element={<NewProject />} />
 
             <Route
-              path="/projects/1/plans"
+              path="/projects/:id/plans"
               element={<Plans />}
             />
 
             <Route
-              path="/projects/1/punch-list/new"
+              path="/projects/:projectId/punch-list/new"
               element={<NewPunchItem />}
             />
 
             <Route
-              path="/projects/1/punch-list/:id"
+              path="/projects/:projectId/punch-list"
+              element={<PunchList />}
+            />
+
+            <Route
+              path="/projects/:projectId/punch-list/:id"
               element={<PunchItem />}
             />
 
             <Route
-              path="/projects/1/team"
+              path="/projects/:id/team"
               element={<Team />}
             />
 

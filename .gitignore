@@ -1,0 +1,22 @@
+# Local environment files and secrets
+.env
+.env.*
+
+# Dependencies and build output
+node_modules/
+dist/
+
+# Uploaded construction files
+server/uploads/
+
+# Temporary tooling and generated backups
+server/.agents/
+server/.claude/
+server/.cursor/
+server/.devin/
+server/check-auth.ts
+server/schema.auth-generated.prisma
+server/schema.before-auth.prisma
+server/index.ts
+frontend/src/app_backup.css
+frontend/src/tsconfig.json

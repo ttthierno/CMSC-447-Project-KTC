@@ -1,62 +1,339 @@
-import { useState } from "react"
-import { Link, useParams } from "react-router-dom"
+
+import { useEffect, useState } from "react";
+import { Link, useParams } from "react-router-dom";
+
+const API_URL = "http://localhost:3000";
+
+type ProjectMember = {
+  id: number;
+  role: string;
+  user: {
+    id: number;
+    name: string;
+    email: string;
+  };
+};
+
+type PunchComment = {
+  id: number;
+  content: string;
+  createdAt: string;
+};
+
+type PunchPhoto = {
+  id: number;
+  fileUrl: string;
+  originalName: string;
+  createdAt: string;
+};
+
+type PunchItemData = {
+  id: number;
+  title: string;
+  description: string | null;
+  status: string;
+  priority: string;
+  projectId: number;
+  drawingId: number | null;
+  pageNumber: number | null;
+  markerX: number | null;
+  markerY: number | null;
+  drawing: { id: number; name: string } | null;
+  assignee: ProjectMember | null;
+  comments: PunchComment[];
+  photos: PunchPhoto[];
+};
 
 function PunchItem() {
+  const { projectId, id } = useParams<{
+    projectId: string;
+    id: string;
+  }>();
 
-  const { id } = useParams()
+  const [item, setItem] = useState<PunchItemData | null>(null);
+  const [members, setMembers] = useState<ProjectMember[]>([]);
+  const [comment, setComment] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [savingComment, setSavingComment] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [error, setError] = useState("");
+  const [commentError, setCommentError] = useState("");
+  const [photoError, setPhotoError] = useState("");
+  const [message, setMessage] = useState("");
 
-  const items = {
-    "1": {
-      title: "Electrical Outlet Issue",
-      description:
-        "Electrical outlet is not properly installed and needs to be inspected and repaired.",
-      location: "Room 101",
-      drawing: "A-101",
-      priority: "High",
-      assignedTo: "Unassigned",
-      status: "Open"
-    },
+  useEffect(() => {
+    let cancelled = false;
 
-    "2": {
-      title: "Wall Paint Needs Repair",
-      description:
-        "Wall paint needs to be repaired and the affected area should be repainted.",
-      location: "Room 305",
-      drawing: "A-101",
-      priority: "Medium",
-      assignedTo: "Kiishi",
-      status: "In Progress"
-    },
+    async function loadData() {
+      if (!projectId || !id) {
+        setError("Project or punch-item ID is missing.");
+        setLoading(false);
+        return;
+      }
 
-    "3": {
-      title: "Door Hardware Missing",
-      description:
-        "Door hardware is missing and needs to be installed.",
-      location: "Room 112",
-      drawing: "A-102",
-      priority: "Low",
-      assignedTo: "Thierno",
-      status: "Completed"
+      setLoading(true);
+      setError("");
+
+      try {
+        const [itemsResponse, membersResponse] = await Promise.all([
+          fetch(`${API_URL}/api/projects/${projectId}/punch-items`),
+          fetch(`${API_URL}/api/projects/${projectId}/members`),
+        ]);
+
+        const itemsData = await itemsResponse.json();
+        const membersData = await membersResponse.json();
+
+        if (!itemsResponse.ok) {
+          throw new Error(
+            itemsData.error || "Could not load punch items."
+          );
+        }
+
+        if (!membersResponse.ok) {
+          throw new Error(
+            membersData.error || "Could not load project members."
+          );
+        }
+
+        const found = itemsData.find(
+          (entry: PunchItemData) => entry.id === Number(id)
+        );
+
+        if (!found) {
+          throw new Error("Punch item not found in this project.");
+        }
+
+        if (!cancelled) {
+          setItem({
+            ...found,
+            comments: found.comments ?? [],
+            photos: found.photos ?? [],
+          });
+          setMembers(membersData);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setError(
+            error instanceof Error
+              ? error.message
+              : "Could not connect to the backend."
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId, id]);
+
+  async function updateItem(values: {
+    status?: string;
+    assigneeId?: number | null;
+  }) {
+    if (!projectId || !id || !item) return;
+
+    setSaving(true);
+    setError("");
+    setMessage("");
+
+    try {
+      const response = await fetch(
+        `${API_URL}/api/projects/${projectId}/punch-items/${id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(values),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Could not update punch item.");
+      }
+
+      setItem((current) =>
+        current
+          ? {
+              ...current,
+              ...data,
+              comments: current.comments,
+              photos: current.photos,
+            }
+          : current
+      );
+
+      setMessage("Changes saved.");
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Could not save changes."
+      );
+    } finally {
+      setSaving(false);
     }
   }
 
-  const item =
-    items[id as keyof typeof items] || items["1"]
+  async function addComment(
+    event: React.FormEvent<HTMLFormElement>
+  ) {
+    event.preventDefault();
 
-  const [status, setStatus] = useState(item.status)
-  const [assignedTo, setAssignedTo] = useState(item.assignedTo)
-  const [comment, setComment] = useState("")
-  const [photo, setPhoto] = useState<string | null>(null)
+    if (!projectId || !id || !comment.trim()) return;
+
+    setSavingComment(true);
+    setCommentError("");
+    setMessage("");
+
+    try {
+      const response = await fetch(
+        `${API_URL}/api/projects/${projectId}/punch-items/${id}/comments`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ content: comment.trim() }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Could not save comment.");
+      }
+
+      setItem((current) =>
+        current
+          ? {
+              ...current,
+              comments: [...current.comments, data],
+            }
+          : current
+      );
+
+      setComment("");
+      setMessage("Comment saved.");
+    } catch (error) {
+      setCommentError(
+        error instanceof Error
+          ? error.message
+          : "Could not save comment."
+      );
+    } finally {
+      setSavingComment(false);
+    }
+  }
+
+  async function uploadPhoto(
+    event: React.ChangeEvent<HTMLInputElement>
+  ) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file || !projectId || !id) return;
+
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+
+    if (!allowedTypes.includes(file.type)) {
+      setPhotoError("Choose a JPG, PNG, or WebP image.");
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      setPhotoError("The image must be no larger than 10 MB.");
+      return;
+    }
+
+    setUploadingPhoto(true);
+    setPhotoError("");
+    setMessage("");
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch(
+        `${API_URL}/api/projects/${projectId}/punch-items/${id}/photos`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Could not upload photo.");
+      }
+
+      setItem((current) =>
+        current
+          ? {
+              ...current,
+              photos: [data, ...current.photos],
+            }
+          : current
+      );
+
+      setMessage("Photo uploaded successfully.");
+    } catch (error) {
+      setPhotoError(
+        error instanceof Error
+          ? error.message
+          : "Could not upload photo."
+      );
+    } finally {
+      setUploadingPhoto(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="page">
+        <p>Loading punch item...</p>
+      </div>
+    );
+  }
+
+  if (!item) {
+    return (
+      <div className="page">
+        <h2>Unable to Load Punch Item</h2>
+        <p role="alert">{error || "Punch item not found."}</p>
+        <Link to={`/projects/${projectId}/punch-list`}>
+          Back to Punch List
+        </Link>
+      </div>
+    );
+  }
+
+  const statusLabel = item.status
+    .replace(/_/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+
+  const priorityLabel =
+    item.priority.charAt(0).toUpperCase() +
+    item.priority.slice(1).toLowerCase();
 
   return (
     <div className="page">
-
       <div className="page-header">
-
         <div>
-
           <Link
-            to="/punch-list"
+            to={`/projects/${item.projectId}/punch-list`}
             className="back-link"
           >
             ← Back to Punch List
@@ -65,186 +342,206 @@ function PunchItem() {
           <h2>{item.title}</h2>
 
           <p>
-            Punch-list item #{id} · {item.drawing} · {item.location}
+            Punch-list item #{item.id} ·{" "}
+            {item.drawing?.name || "No drawing linked"}
+            {item.pageNumber ? ` · Page ${item.pageNumber}` : ""}
           </p>
-
         </div>
 
         <span
-          className={`large-status ${
-            status.toLowerCase().replace(" ", "-")
-          }`}
+          className={`large-status ${item.status
+            .toLowerCase()
+            .replace("_", "-")}`}
         >
-          {status}
+          {statusLabel}
         </span>
-
       </div>
 
+      {error && <p role="alert">{error}</p>}
+      {message && <p role="status">{message}</p>}
+
       <div className="punch-detail-layout">
-
         <div className="punch-detail-main">
-
           <div className="detail-card">
-
             <h3>Description</h3>
-
-            <p>
-              {item.description}
-            </p>
-
+            <p>{item.description || "No description provided."}</p>
           </div>
 
           <div className="detail-card">
+            <h3>Photos ({item.photos.length})</h3>
 
-            <h3>Photos</h3>
-
-            {photo ? (
-              <img
-                src={photo}
-                alt="Punch-list item"
-                className="uploaded-photo"
-              />
-            ) : (
+            {item.photos.length === 0 ? (
               <div className="photo-placeholder">
-                No photos uploaded
+                No photos uploaded yet
+              </div>
+            ) : (
+              <div className="uploaded-photos">
+                {item.photos.map((photo) => (
+                  <div key={photo.id}>
+                    <a
+                      href={`${API_URL}${photo.fileUrl}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <img
+                        src={`${API_URL}${photo.fileUrl}`}
+                        alt={photo.originalName}
+                        className="uploaded-photo"
+                        loading="lazy"
+                      />
+                    </a>
+                    <p>{photo.originalName}</p>
+                    <small>
+                      {new Date(photo.createdAt).toLocaleString()}
+                    </small>
+                  </div>
+                ))}
               </div>
             )}
 
             <label className="upload-button">
-
-              + Add Photo
-
+              {uploadingPhoto ? "Uploading..." : "+ Add Photo"}
               <input
                 type="file"
-                accept="image/*"
-                onChange={(event) => {
-
-                  const file =
-                    event.target.files?.[0]
-
-                  if (file) {
-                    setPhoto(
-                      URL.createObjectURL(file)
-                    )
-                  }
-
-                }}
+                accept="image/jpeg,image/png,image/webp"
+                onChange={uploadPhoto}
+                disabled={uploadingPhoto}
                 hidden
               />
-
             </label>
 
+            {photoError && <p role="alert">{photoError}</p>}
           </div>
 
           <div className="detail-card">
+            <h3>Comments ({item.comments.length})</h3>
 
-            <h3>Comments</h3>
+            {item.comments.length === 0 ? (
+              <p>No comments yet.</p>
+            ) : (
+              <div className="comments-list">
+                {item.comments.map((savedComment) => (
+                  <div className="comment" key={savedComment.id}>
+                    <p>{savedComment.content}</p>
+                    <small>
+                      {new Date(savedComment.createdAt).toLocaleString()}
+                    </small>
+                  </div>
+                ))}
+              </div>
+            )}
 
-            <textarea
-              value={comment}
-              onChange={(event) =>
-                setComment(event.target.value)
-              }
-              placeholder="Add a comment..."
-              className="comment-input"
-            />
+            <form onSubmit={addComment}>
+              <label htmlFor="comment-input">Add a comment</label>
+              <textarea
+                id="comment-input"
+                value={comment}
+                onChange={(event) => setComment(event.target.value)}
+                placeholder="Add an update about this issue..."
+                className="comment-input"
+                rows={3}
+                required
+              />
 
-            <button
-              className="primary-button"
-              onClick={() => {
+              {commentError && <p role="alert">{commentError}</p>}
 
-                if (comment.trim() !== "") {
-                  alert("Comment added!")
-                  setComment("")
-                }
-
-              }}
-            >
-              Add Comment
-            </button>
-
+              <button
+                type="submit"
+                className="primary-button"
+                disabled={savingComment || !comment.trim()}
+              >
+                {savingComment ? "Saving..." : "Add Comment"}
+              </button>
+            </form>
           </div>
-
         </div>
 
         <div className="punch-detail-sidebar">
-
           <div className="detail-card">
-
             <h3>Item Details</h3>
 
             <div className="detail-row">
               <span>Status</span>
-              <strong>{status}</strong>
+              <strong>{statusLabel}</strong>
             </div>
 
             <div className="detail-row">
               <span>Priority</span>
-              <strong>{item.priority}</strong>
+              <strong>{priorityLabel}</strong>
             </div>
 
             <div className="detail-row">
               <span>Location</span>
-              <strong>{item.location}</strong>
+              <strong>
+                {item.markerX !== null && item.markerY !== null
+                  ? `${Math.round(item.markerX * 100)}% across, ${Math.round(item.markerY * 100)}% down`
+                  : "Not set"}
+              </strong>
             </div>
 
             <div className="detail-row">
               <span>Drawing</span>
-              <strong>{item.drawing}</strong>
+              <strong>{item.drawing?.name || "Not linked"}</strong>
             </div>
 
             <div className="detail-row">
               <span>Assigned To</span>
-              <strong>{assignedTo}</strong>
+              <strong>{item.assignee?.user.name || "Unassigned"}</strong>
             </div>
-
           </div>
 
           <div className="detail-card">
-
             <h3>Actions</h3>
 
-            <label className="action-label">
+            <label className="action-label" htmlFor="item-assignee">
               Assign To
             </label>
 
             <select
-              value={assignedTo}
-              onChange={(event) =>
-                setAssignedTo(event.target.value)
-              }
+              id="item-assignee"
               className="action-select"
+              value={item.assignee?.id ?? ""}
+              disabled={saving}
+              onChange={(event) =>
+                updateItem({
+                  assigneeId: event.target.value
+                    ? Number(event.target.value)
+                    : null,
+                })
+              }
             >
-              <option>Unassigned</option>
-              <option>Kiishi</option>
-              <option>Thierno</option>
-              <option>Chase</option>
+              <option value="">Unassigned</option>
+              {members.map((member) => (
+                <option key={member.id} value={member.id}>
+                  {member.user.name}
+                </option>
+              ))}
             </select>
 
-            <label className="action-label">
+            <label className="action-label" htmlFor="item-status">
               Status
             </label>
 
             <select
-              value={status}
-              onChange={(event) =>
-                setStatus(event.target.value)
-              }
+              id="item-status"
               className="action-select"
+              value={item.status.toUpperCase()}
+              disabled={saving}
+              onChange={(event) =>
+                updateItem({ status: event.target.value })
+              }
             >
-              <option>Open</option>
-              <option>In Progress</option>
-              <option>Completed</option>
+              <option value="OPEN">Open</option>
+              <option value="IN_PROGRESS">In Progress</option>
+              <option value="COMPLETED">Completed</option>
             </select>
 
+            {saving && <p>Saving changes...</p>}
           </div>
-
         </div>
-
       </div>
-
     </div>
-  )
+  );
 }
 
-export default PunchItem
+export default PunchItem;
