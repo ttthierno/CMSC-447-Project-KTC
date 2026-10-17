@@ -46,6 +46,7 @@ function Plans() {
   );
   const [pageNumber, setPageNumber] = useState(1);
   const [numPages, setNumPages] = useState(0);
+  const [zoom, setZoom] = useState(1);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
@@ -293,7 +294,30 @@ function Plans() {
               >
                 Previous
               </button>
+              
+              <button
+              type="button"
+              onClick={() => setZoom((current) => Math.max(0.5, current - 0.25))
+              }
+              disabled={zoom <= 0.5}                  
+              >
+              </button>
+              <span>{Math.round(zoom * 100)}%</span>
 
+              <button 
+                type="button"
+                onClick={() => setZoom((current) => Math.min(3, current + 0.25))
+                }
+                disabled={zoom >=3}
+              >
+                +
+              </button>
+              <button
+                type="button"
+                onClick={() => setZoom(1)}
+              >
+                Reset Zoom
+              </button>
               <button
                 type="button"
                 disabled={!numPages || pageNumber >= numPages}
@@ -341,6 +365,7 @@ function Plans() {
                   <Page
                     pageNumber={pageNumber}
                     width={Math.min(800, Math.max(320, window.innerWidth * 0.55))}
+                    scale={zoom}
                   />
 
                   {visiblePins.map((pin) => (
