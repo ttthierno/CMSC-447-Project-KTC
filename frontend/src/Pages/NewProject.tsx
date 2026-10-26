@@ -51,26 +51,36 @@ function NewProject() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="project-card">
+      <form 
+        onSubmit={handleSubmit}
+        className="project-card new-project-form"
+      >
+      <div className="form-group">
         <label htmlFor="project-name">Project Name</label>
-        <input
+        <input 
           id="project-name"
+          type="text"
           value={name}
           onChange={(event) => setName(event.target.value)}
           placeholder="Enter project name"
           required
         />
-
+      </div>
+  
+      <div className="form-group">
         <label htmlFor="project-description">Description</label>
         <textarea
           id="project-description"
           value={description}
           onChange={(event) => setDescription(event.target.value)}
           placeholder="Describe the project"
+          rows={4}
         />
+      </div>
 
-        {error && <p role="alert">{error}</p>}
+      {error && <p role="alert">{error}</p>}
 
+      <div className="form-actions">
         <button
           type="submit"
           className="primary-button"
@@ -79,10 +89,13 @@ function NewProject() {
           {loading ? "Creating Project..." : "Create Project"}
         </button>
 
-        <Link to="/projects">Cancel</Link>
-      </form>
-    </div>
-  );
-}
+        <Link to="/projects" className="cancel-link">
+          Cancel
+        </Link>
+          </div>
+        </form>
+      </div>
+    );
+  }
 
 export default NewProject;

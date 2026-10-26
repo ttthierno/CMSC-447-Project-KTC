@@ -301,6 +301,7 @@ function Plans() {
               }
               disabled={zoom <= 0.5}                  
               >
+                -
               </button>
               <span>{Math.round(zoom * 100)}%</span>
 
@@ -339,7 +340,14 @@ function Plans() {
             </div>
           </div>
 
-          <div className="drawing-canvas">
+          <div 
+            className="drawing-canvas"
+            style={{
+              overflow: "auto",
+              maxHeight: "70vh",
+              width: "100%",
+            }}
+          >
             {loading ? (
               <p>Loading drawings...</p>
             ) : pdfUrl ? (
@@ -358,7 +366,6 @@ function Plans() {
                     display: "inline-block",
                     cursor: "crosshair",
                     lineHeight: 0,
-                    maxWidth: "100%",
                   }}
                   title="Click a location to create a punch item"
                 >

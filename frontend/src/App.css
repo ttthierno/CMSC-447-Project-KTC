@@ -952,8 +952,6 @@ body {
    KONTRACK GLOBAL DARK THEME
    ========================================================= */
 
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap");
-
 
 :root {
   --background: #080b10;
@@ -1740,4 +1738,60 @@ a:hover {
   margin: 14px 0 0;
   color: #166534;
   font-size: 14px;
+}
+
+/* ===================================
+    NEW PROJECT FORM
+=================================== */
+
+.new-project-form {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  width: 100%;
+  max-width: 600px;
+  box-sizing: border-box;
+}
+
+.new-project-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.new-project-form .form-group input,
+.new-project-form .form-group textarea {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #101820;
+  color: var(--text);
+  font-size: 15px;
+  box-sizing: border-box;
+}
+
+.new-project-form .form-group textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.new-project-form .form-actions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.new-project-form .cancel-link {
+  color: var(--gold-bright);
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.new-project-form .cancel-link:hover {
+  text-decoration: underline;
 }
