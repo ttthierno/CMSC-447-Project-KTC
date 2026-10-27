@@ -3,6 +3,7 @@ import "dotenv/config";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import prisma from "./prisma.js";
+import { username } from "better-auth/plugins";
 
 const secret = process.env.BETTER_AUTH_SECRET;
 
@@ -14,6 +15,8 @@ if (!secret) {
 
 export const auth = betterAuth({
   appName: "KonTraCk",
+
+  plugins: [username()],
 
   baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
 
@@ -30,6 +33,7 @@ export const auth = betterAuth({
     provider: "postgresql",
   }),
 
+  
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,

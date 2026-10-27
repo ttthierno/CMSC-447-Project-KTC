@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
@@ -75,23 +74,39 @@ function ProjectDashboard() {
 
       try {
         const response = await fetch(
-          `http://localhost:3000/api/projects/${id}`
+          `http://localhost:3000/api/projects/${id}`,
+          {
+            credentials: "include",
+          }
         );
 
-        const data = await response.json();
+        const responseText = await response.text();
+        let data: any = {};
+
+        try {
+          data = responseText ? JSON.parse(responseText) : {};
+        } catch {
+          data = { error: responseText };
+        }
 
         if (!response.ok) {
-          throw new Error(data.error || "Could not load project.");
+          throw new Error(
+            `Request failed (${response.status}): ${
+              data.error || "Could not load project."
+            }`
+          );
         }
 
         if (!cancelled) {
           setProject(data);
         }
-      } catch (error) {
+      } catch (err) {
+        console.error("Load project error:", err);
+
         if (!cancelled) {
           setError(
-            error instanceof Error
-              ? error.message
+            err instanceof Error
+              ? err.message
               : "Could not connect to the backend."
           );
         }
@@ -110,7 +125,11 @@ function ProjectDashboard() {
   }, [id]);
 
   if (loading) {
-    return <div className="page"><p>Loading project dashboard...</p></div>;
+    return (
+      <div className="page">
+        <p>Loading project dashboard...</p>
+      </div>
+    );
   }
 
   if (error || !project) {
@@ -123,15 +142,19 @@ function ProjectDashboard() {
     );
   }
 
-  const openCount = project.punchItems.filter(
+  const drawings = project.drawings || [];
+  const members = project.members || [];
+  const punchItems = project.punchItems || [];
+
+  const openCount = punchItems.filter(
     (item) => statusLabel(item.status) === "Open"
   ).length;
 
-  const progressCount = project.punchItems.filter(
+  const progressCount = punchItems.filter(
     (item) => statusLabel(item.status) === "In Progress"
   ).length;
 
-  const completedCount = project.punchItems.filter(
+  const completedCount = punchItems.filter(
     (item) => statusLabel(item.status) === "Completed"
   ).length;
 
@@ -187,17 +210,17 @@ function ProjectDashboard() {
       <div className="dashboard-stats">
         <div className="stat-card">
           <span>Total Punch Items</span>
-          <strong>{project.punchItems.length}</strong>
+          <strong>{punchItems.length}</strong>
         </div>
 
         <div className="stat-card">
           <span>Drawings</span>
-          <strong>{project.drawings.length}</strong>
+          <strong>{drawings.length}</strong>
         </div>
 
         <div className="stat-card">
           <span>Team Members</span>
-          <strong>{project.members.length}</strong>
+          <strong>{members.length}</strong>
         </div>
 
         <div className="stat-card">
@@ -209,7 +232,6 @@ function ProjectDashboard() {
       <div className="dashboard-section">
         <div className="section-header">
           <h3>Punch Item Progress</h3>
-
           <Link
             to={`/projects/${project.id}/punch-list`}
             className="view-project"
@@ -239,7 +261,6 @@ function ProjectDashboard() {
       <div className="dashboard-section">
         <div className="section-header">
           <h3>Recent Punch Items</h3>
-
           <Link
             to={`/projects/${project.id}/punch-list`}
             className="view-project"
@@ -248,11 +269,11 @@ function ProjectDashboard() {
           </Link>
         </div>
 
-        {project.punchItems.length === 0 ? (
+        {punchItems.length === 0 ? (
           <p>No punch items have been added to this project yet.</p>
         ) : (
           <div className="punch-list">
-            {project.punchItems.slice(0, 5).map((item) => (
+            {punchItems.slice(0, 5).map((item) => (
               <div className="punch-item" key={item.id}>
                 <div>
                   <Link
@@ -263,7 +284,7 @@ function ProjectDashboard() {
 
                   <span>
                     {item.drawing?.name || "No drawing"} ·{" "}
-                    {item.assignee?.user.name || "Unassigned"}
+                    {item.assignee?.user?.name || "Unassigned"}
                   </span>
                 </div>
 
@@ -279,7 +300,6 @@ function ProjectDashboard() {
       <div className="dashboard-section">
         <div className="section-header">
           <h3>Project Team</h3>
-
           <Link
             to={`/projects/${project.id}/team`}
             className="view-project"
@@ -288,19 +308,19 @@ function ProjectDashboard() {
           </Link>
         </div>
 
-        {project.members.length === 0 ? (
+        {members.length === 0 ? (
           <p>No team members have been added to this project yet.</p>
         ) : (
           <div className="team-grid">
-            {project.members.slice(0, 3).map((member) => (
+            {members.slice(0, 3).map((member) => (
               <div className="team-card" key={member.id}>
                 <div className="team-avatar">
-                  {member.user.name.charAt(0).toUpperCase()}
+                  {(member.user?.name || "U").charAt(0).toUpperCase()}
                 </div>
 
                 <div className="team-info">
-                  <h3>{member.user.name}</h3>
-                  <p>{member.user.email}</p>
+                  <h3>{member.user?.name || "Unknown User"}</h3>
+                  <p>{member.user?.email || "No email available"}</p>
                   <span>
                     {member.role === "ADMIN"
                       ? "Project Administrator"

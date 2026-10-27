@@ -25,9 +25,15 @@ function Login() {
       }
 
       window.location.href = "/";
-    } catch {
-      setError("Unable to sign in. Please try again.");
-    } finally {
+   } catch (err: unknown) {
+  console.error("KonTraCk sign-in error:", err);
+
+  if (err instanceof Error) {
+    setError(`Sign-in failed: ${err.message}`);
+  } else {
+    setError("Sign-in failed due to an unexpected error. Check the browser console.");
+  }
+} finally {
       setLoading(false);
     }
   }
@@ -36,7 +42,7 @@ function Login() {
     <div className="auth-page">
       <form className="auth-card" onSubmit={handleLogin}>
         <h1>Welcome back</h1>
-        <p>Sign in to your KonTraCk account.</p>
+        <p>Welcome to KonTraCk. Sign in to continue.</p>
 
         <label htmlFor="email">Email</label>
         <input

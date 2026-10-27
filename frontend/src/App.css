@@ -4,6 +4,10 @@
 ================================ */
 
 
+
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&display=swap');
+
+
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap");
 :root {
   --background: #f5f7fa;
@@ -13,7 +17,14 @@
   --accent: #d4a017;
   --border: #e4e7ec;
 }
-
+@font-face {
+  font-family: "Ranade";
+  src: url("./assets/Ranade_Complete/Fonts/OTF/Ranade-Regular.otf")
+    format("opentype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
 
 /* ================================
    DARK MODE
@@ -43,7 +54,7 @@
 
 body {
   margin: 0;
-  font-family: Arial, sans-serif;
+  font-family: "Ranade", sans-serif;
   background: var(--background);
   color: var(--text);
 }
@@ -866,6 +877,7 @@ body {
 
 /* API */
 
+
 .api-status {
   display: flex;
 
@@ -990,13 +1002,41 @@ body,
 }
 
 body {
-  font-family: "Inter", sans-serif;
+  font-family: "Ranade", sans-serif;
 
   background: var(--background);
 
   color: var(--text);
 
   font-size: 16px;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: "Syne", sans-serif;
+}
+
+
+/* Editorial heading style */
+
+.page-header h2 {
+  font-family: "Syne", sans-serif;
+  font-size: 64px;
+  font-weight: 800;
+  letter-spacing: -3px;
+  line-height: 1.05;
+  margin: 0 0 12px;
+}
+
+
+.page-header p {
+  font-family: "Ranade", sans-serif;
+  font-size: 1rem;
+  line-height: 1.6;
 }
 
 
@@ -1187,28 +1227,39 @@ body {
    TOP BAR
    ========================================================= */
 
-.top-bar {
-  height: 72px;
 
+.top-bar {
+  min-height: 76px;
+  padding: 0 36px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 24px;
+}
 
-  padding: 0 40px;
+.top-bar-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
 
-  background: var(--background);
-
-  border-bottom: 1px solid var(--border);
+.top-bar-eyebrow {
+  color: var(--muted-text);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
 }
 
 .top-bar h1 {
   margin: 0;
-
-  font-size: 20px;
-
-  font-weight: 700;
-
   color: var(--text);
+  font-family: "Inter", sans-serif;
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -0.6px;
 }
 
 
@@ -1740,4 +1791,187 @@ a:hover {
   margin: 14px 0 0;
   color: #166534;
   font-size: 14px;
+}
+
+
+.home-page {
+  padding: 48px;
+}
+
+.home-welcome {
+  padding: 60px 0;
+}
+
+.home-eyebrow {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 3px;
+  color: #777;
+}
+
+.home-welcome h1 {
+  font-size: clamp(44px, 7vw, 84px);
+  font-weight: 800;
+  letter-spacing: -4px;
+  line-height: 1.1;
+  margin: 20px 0;
+}
+
+.home-subtitle {
+  font-size: 18px;
+  color: #777;
+}
+
+
+/* Collapsible sidebar */
+.app {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  flex-shrink: 0;
+  transition: width 0.25s ease, min-width 0.25s ease;
+}
+
+.main-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.sidebar-toggle {
+  margin-left: auto;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font-size: 25px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-toggle:hover {
+  background: rgba(128, 128, 128, 0.15);
+}
+
+.sidebar-collapsed .sidebar {
+  width: 76px;
+  min-width: 76px;
+}
+
+.sidebar-collapsed .sidebar-logo {
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.sidebar-collapsed .sidebar-logo-text {
+  display: none;
+}
+
+.sidebar-collapsed .sidebar-toggle {
+  margin: 8px auto 0;
+}
+
+.sidebar-collapsed .nav-item {
+  justify-content: center;
+  gap: 0;
+}
+
+.sidebar-collapsed .nav-item > span:not(.nav-icon):not(.settings-active-indicator) {
+  display: none;
+}
+
+.sidebar-collapsed .settings-active-indicator {
+  display: none;
+}
+
+
+/* ===== KonTraCk Minimal Form Styling ===== */
+
+input,
+textarea,
+select {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  padding: 9px 12px;
+  margin: 4px 0 10px;
+  border: 1px solid #d8dfe5;
+  border-radius: 7px;
+  background: #eef1f4;
+  color: #263238;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.4;
+  outline: none;
+  box-shadow: none;
+  transition: background 0.2s ease, border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+input,
+select {
+  height: 38px;
+  min-height: 0;
+}
+
+textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  background: #e9eafa;
+  border-color: #a5a7d8;
+  box-shadow: 0 0 0 2px rgba(165, 167, 216, 0.18);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #929ca5;
+}
+
+/* Smaller, cleaner labels */
+label {
+  display: block;
+  margin: 0 0 3px;
+  color: #59666c;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1px;
+}
+
+/* Tighter form spacing */
+form {
+  gap: 2px;
+}
+
+.form-group,
+.form-field,
+.input-group {
+  margin-bottom: 8px;
+  gap: 2px;
+}
+
+/* Compact checkboxes and radio buttons */
+input[type="checkbox"],
+input[type="radio"] {
+  width: 14px;
+  height: 14px;
+  min-height: 0;
+  margin: 0 6px 0 0;
+  padding: 0;
+  box-shadow: none;
+}
+
+/* Keep submit buttons neatly spaced */
+form button[type="submit"] {
+  margin-top: 6px;
 }

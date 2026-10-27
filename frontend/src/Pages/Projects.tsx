@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -20,17 +19,29 @@ function Projects() {
   const [error, setError] = useState("");
 
   async function loadProjects() {
+    setError("");
+
     try {
-      const response = await fetch("http://localhost:3000/api/projects");
+      const response = await fetch("http://localhost:3000/api/projects", {
+        credentials: "include",
+      });
 
       if (!response.ok) {
-        throw new Error("Could not load projects.");
+        const details = await response.text();
+        throw new Error(
+          `Could not load projects (${response.status}): ${details}`
+        );
       }
 
       const data = await response.json();
-      setProjects(data);
-    } catch {
-      setError("Could not connect to the backend.");
+      setProjects(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Load projects error:", err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Could not connect to the backend."
+      );
     } finally {
       setLoading(false);
     }
@@ -47,12 +58,21 @@ function Projects() {
     try {
       const response = await fetch("http://localhost:3000/api/projects", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, description }),
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: name.trim(),
+          description: description.trim(),
+        }),
       });
 
       if (!response.ok) {
-        throw new Error("Could not create project.");
+        const details = await response.text();
+        throw new Error(
+          `Could not create project (${response.status}): ${details}`
+        );
       }
 
       setName("");
@@ -60,8 +80,13 @@ function Projects() {
       setShowForm(false);
       setLoading(true);
       await loadProjects();
-    } catch {
-      setError("Could not create project. Please try again.");
+    } catch (err) {
+      console.error("Create project error:", err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Could not create project. Please try again."
+      );
     }
   }
 
@@ -73,9 +98,9 @@ function Projects() {
           <p>Manage your construction projects.</p>
         </div>
 
-       <Link to="/projects/new" className="primary-button">
-         + New Project
-      </Link>
+        <Link to="/projects/new" className="primary-button">
+          + New Project
+        </Link>
       </div>
 
       {showForm && (

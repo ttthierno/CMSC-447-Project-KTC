@@ -10,6 +10,7 @@ import fs from "node:fs";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { toNodeHandler } from "better-auth/node";
+import { fromNodeHeaders } from "better-auth/node";
 import { auth } from "./auth.js";
 
 
@@ -122,24 +123,52 @@ const uploadDrawing = multer({
   },
 });
 
+async function getLoggedInUser(req: import("express").Request) {
+  const session = await auth.api.getSession({
+    headers: fromNodeHeaders(req.headers),
+  });
 
-app.get("/", (req, res) => {
+  return session?.user ?? null;
+}
+
+app.get("/", (_req, res) => {
   res.json({
     message: "KonTraCk backend is running!",
   });
 });
 
-app.get("/api/health", (req, res) => {
+app.get("/api/health", (_req, res) => {
   res.json({
     status: "healthy",
     application: "KonTraCk",
   });
 });
 
-// Get all projects
+
 app.get("/api/projects", async (req, res) => {
   try {
+    const user = await getLoggedInUser(req);
+
+    if (!user) {
+      res.status(401).json({ error: "Please log in first" });
+      return;
+    }
+
+    const userId = Number(user.id);
+
+    if (!Number.isInteger(userId) || userId <= 0) {
+      res.status(401).json({ error: "Invalid user session" });
+      return;
+    }
+
     const projects = await prisma.project.findMany({
+      where: {
+        members: {
+          some: {
+            userId,
+          },
+        },
+      },
       include: {
         drawings: true,
         members: {
@@ -157,7 +186,6 @@ app.get("/api/projects", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch projects" });
   }
 });
-
 // Get one project with its drawings, team, and punch items
 app.get("/api/projects/:id", async (req, res) => {
   const id = Number(req.params.id);
@@ -168,27 +196,40 @@ app.get("/api/projects/:id", async (req, res) => {
   }
 
   try {
-    const project = await prisma.project.findUnique({
-      where: { id },
+    const user = await getLoggedInUser(req);
+
+    if (!user) {
+      res.status(401).json({ error: "Please log in first" });
+      return;
+    }
+
+    const userId = Number(user.id);
+
+    if (!Number.isInteger(userId) || userId <= 0) {
+      res.status(401).json({ error: "Invalid user session" });
+      return;
+    }
+
+    const project = await prisma.project.findFirst({
+      where: {
+        id,
+        members: {
+          some: { userId },
+        },
+      },
       include: {
         drawings: true,
         members: {
-          include: {
-            user: true,
-          },
+          include: { user: true },
         },
         punchItems: {
           include: {
             drawing: true,
             assignee: {
-              include: {
-                user: true,
-              },
+              include: { user: true },
             },
           },
-          orderBy: {
-            createdAt: "desc",
-          },
+          orderBy: { createdAt: "desc" },
         },
       },
     });
@@ -205,13 +246,27 @@ app.get("/api/projects/:id", async (req, res) => {
   }
 });
 
-// Create a project
+
 app.post("/api/projects", async (req, res) => {
   try {
+    const user = await getLoggedInUser(req);
+
+    if (!user) {
+      res.status(401).json({ error: "Please log in first" });
+      return;
+    }
+
     const { name, description } = req.body;
 
     if (!name || typeof name !== "string" || !name.trim()) {
       res.status(400).json({ error: "Project name is required" });
+      return;
+    }
+
+    const userId = Number(user.id);
+
+    if (!Number.isInteger(userId) || userId <= 0) {
+      res.status(401).json({ error: "Invalid user session" });
       return;
     }
 
@@ -220,6 +275,15 @@ app.post("/api/projects", async (req, res) => {
         name: name.trim(),
         description:
           typeof description === "string" ? description.trim() : null,
+        members: {
+          create: {
+            userId,
+            role: "ADMIN",
+          },
+        },
+      },
+      include: {
+        members: true,
       },
     });
 
@@ -229,6 +293,7 @@ app.post("/api/projects", async (req, res) => {
     res.status(500).json({ error: "Failed to create project" });
   }
 });
+
 
 // Get members for one project
 app.get("/api/projects/:id/members", async (req, res) => {
@@ -240,8 +305,22 @@ app.get("/api/projects/:id/members", async (req, res) => {
   }
 
   try {
-    const project = await prisma.project.findUnique({
-      where: { id: projectId },
+    const user = await getLoggedInUser(req);
+
+    if (!user) {
+      res.status(401).json({ error: "Please log in first" });
+      return;
+    }
+
+    const userId = Number(user.id);
+
+    const project = await prisma.project.findFirst({
+      where: {
+        id: projectId,
+        members: {
+          some: { userId },
+        },
+      },
     });
 
     if (!project) {
@@ -266,7 +345,6 @@ app.get("/api/projects/:id/members", async (req, res) => {
   }
 });
 
-
 app.post("/api/projects/:id/members", async (req, res) => {
   const projectId = Number(req.params.id);
   const { name, email, role } = req.body;
@@ -277,7 +355,8 @@ app.post("/api/projects/:id/members", async (req, res) => {
   }
 
   if (
-    typeof name !== "string" || !name.trim() ||
+    typeof name !== "string" ||
+    !name.trim() ||
     typeof email !== "string" ||
     !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
   ) {
@@ -298,28 +377,48 @@ app.post("/api/projects/:id/members", async (req, res) => {
   }
 
   try {
-    const project = await prisma.project.findUnique({
-      where: { id: projectId },
-    });
+    const currentUser = await getLoggedInUser(req);
 
-    if (!project) {
-      res.status(404).json({ error: "Project not found" });
+    if (!currentUser) {
+      res.status(401).json({ error: "Please log in first" });
       return;
     }
 
-    const user = await prisma.user.upsert({
-      where: { email: email.trim().toLowerCase() },
-      update: { name: name.trim() },
-      create: {
-        name: name.trim(),
-        email: email.trim().toLowerCase(),
+    const currentUserId = Number(currentUser.id);
+
+    const currentMembership = await prisma.projectMember.findUnique({
+      where: {
+        projectId_userId: {
+          projectId,
+          userId: currentUserId,
+        },
       },
     });
+
+    if (!currentMembership || currentMembership.role !== "ADMIN") {
+      res.status(403).json({
+        error: "Only project admins can add team members",
+      });
+      return;
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const existingUser = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+
+    if (!existingUser) {
+      res.status(404).json({
+        error: "This user must create an account before being added",
+      });
+      return;
+    }
 
     const member = await prisma.projectMember.create({
       data: {
         projectId,
-        userId: user.id,
+        userId: existingUser.id,
         role: memberRole,
       },
       include: { user: true },
@@ -328,8 +427,7 @@ app.post("/api/projects/:id/members", async (req, res) => {
     res.status(201).json(member);
   } catch (error) {
     if (
-      typeof
-       error === "object" &&
+      typeof error === "object" &&
       error !== null &&
       "code" in error &&
       error.code === "P2002"
@@ -346,7 +444,6 @@ app.post("/api/projects/:id/members", async (req, res) => {
 });
 
 
-
 app.get("/api/projects/:id/punch-items", async (req, res) => {
   const projectId = Number(req.params.id);
 
@@ -356,8 +453,22 @@ app.get("/api/projects/:id/punch-items", async (req, res) => {
   }
 
   try {
-    const project = await prisma.project.findUnique({
-      where: { id: projectId },
+    const user = await getLoggedInUser(req);
+
+    if (!user) {
+      res.status(401).json({ error: "Please log in first" });
+      return;
+    }
+
+    const userId = Number(user.id);
+
+    const project = await prisma.project.findFirst({
+      where: {
+        id: projectId,
+        members: {
+          some: { userId },
+        },
+      },
     });
 
     if (!project) {
@@ -367,29 +478,19 @@ app.get("/api/projects/:id/punch-items", async (req, res) => {
 
     const punchItems = await prisma.punchItem.findMany({
       where: { projectId },
-    
-include: {
-  drawing: true,
-  assignee: {
-    include: {
-      user: true,
-    },
-  },
-  comments: {
-    orderBy: {
-      createdAt: "asc",
-    },
-  },
-  photos: {
-    orderBy: {
-      createdAt: "desc",
-    },
-  },
-},
-
-      orderBy: {
-        createdAt: "desc",
+      include: {
+        drawing: true,
+        assignee: {
+          include: { user: true },
+        },
+        comments: {
+          orderBy: { createdAt: "asc" },
+        },
+        photos: {
+          orderBy: { createdAt: "desc" },
+        },
       },
+      orderBy: { createdAt: "desc" },
     });
 
     res.json(punchItems);
@@ -398,7 +499,6 @@ include: {
     res.status(500).json({ error: "Failed to fetch punch items" });
   }
 });
-
 
 app.post("/api/projects/:projectId/punch-items", async (req, res) => {
   const projectId = Number(req.params.projectId);
@@ -469,17 +569,26 @@ app.post("/api/projects/:projectId/punch-items", async (req, res) => {
     return;
   }
 
-  if (
-    hasPage &&
-    (!Number.isInteger(pageNumber) || pageNumber < 1)
-  ) {
+  if (hasPage && (!Number.isInteger(pageNumber) || pageNumber < 1)) {
     res.status(400).json({ error: "Invalid drawing page number" });
     return;
   }
 
   try {
-    const project = await prisma.project.findUnique({
-      where: { id: projectId },
+    const user = await getLoggedInUser(req);
+
+    if (!user) {
+      res.status(401).json({ error: "Please log in first" });
+      return;
+    }
+
+    const userId = Number(user.id);
+
+    const project = await prisma.project.findFirst({
+      where: {
+        id: projectId,
+        members: { some: { userId } },
+      },
     });
 
     if (!project) {
@@ -498,10 +607,7 @@ app.post("/api/projects/:projectId/punch-items", async (req, res) => {
       }
 
       const drawing = await prisma.drawing.findFirst({
-        where: {
-          id: validDrawingId,
-          projectId,
-        },
+        where: { id: validDrawingId, projectId },
       });
 
       if (!drawing) {
@@ -528,11 +634,7 @@ app.post("/api/projects/:projectId/punch-items", async (req, res) => {
       },
       include: {
         drawing: true,
-        assignee: {
-          include: {
-            user: true,
-          },
-        },
+        assignee: { include: { user: true } },
       },
     });
 
@@ -552,23 +654,15 @@ app.patch(
     const { status, assigneeId } = req.body;
 
     if (
-      !Number.isInteger(projectId) ||
-      projectId <= 0 ||
-      !Number.isInteger(itemId) ||
-      itemId <= 0
+      !Number.isInteger(projectId) || projectId <= 0 ||
+      !Number.isInteger(itemId) || itemId <= 0
     ) {
       res.status(400).json({ error: "Invalid project or punch item ID" });
       return;
     }
 
-    const hasStatus = Object.prototype.hasOwnProperty.call(
-      req.body,
-      "status"
-    );
-    const hasAssignee = Object.prototype.hasOwnProperty.call(
-      req.body,
-      "assigneeId"
-    );
+    const hasStatus = Object.prototype.hasOwnProperty.call(req.body, "status");
+    const hasAssignee = Object.prototype.hasOwnProperty.call(req.body, "assigneeId");
 
     if (!hasStatus && !hasAssignee) {
       res.status(400).json({
@@ -599,6 +693,29 @@ app.patch(
     }
 
     try {
+      const user = await getLoggedInUser(req);
+
+      if (!user) {
+        res.status(401).json({ error: "Please log in first" });
+        return;
+      }
+
+      const userId = Number(user.id);
+
+      const membership = await prisma.projectMember.findUnique({
+        where: {
+          projectId_userId: {
+            projectId,
+            userId,
+          },
+        },
+      });
+
+      if (!membership) {
+        res.status(404).json({ error: "Project or punch item not found" });
+        return;
+      }
+
       const existingItem = await prisma.punchItem.findFirst({
         where: { id: itemId, projectId },
       });
@@ -620,10 +737,7 @@ app.patch(
           }
 
           const member = await prisma.projectMember.findFirst({
-            where: {
-              id: memberId,
-              projectId,
-            },
+            where: { id: memberId, projectId },
           });
 
           if (!member) {
@@ -653,8 +767,6 @@ app.patch(
     }
   }
 );
-
-
 
 
 app.post(
@@ -695,9 +807,24 @@ app.post(
         return;
       }
 
-      const project = await prisma.project.findUnique({
-        where: { id: projectId },
-      });
+      const user = await getLoggedInUser(req);
+
+if (!user) {
+  await fs.promises.unlink(file.path).catch(() => {});
+  res.status(401).json({ error: "Please log in first" });
+  return;
+}
+
+const userId = Number(user.id);
+
+const project = await prisma.project.findFirst({
+  where: {
+    id: projectId,
+    members: {
+      some: { userId },
+    },
+  },
+});
 
       if (!project) {
         await fs.promises.unlink(file.path).catch(() => {});
@@ -726,7 +853,6 @@ app.post(
 );
 
 
-
 app.post(
   "/api/projects/:projectId/punch-items/:itemId/comments",
   async (req, res) => {
@@ -735,10 +861,8 @@ app.post(
     const { content } = req.body;
 
     if (
-      !Number.isInteger(projectId) ||
-      projectId <= 0 ||
-      !Number.isInteger(itemId) ||
-      itemId <= 0
+      !Number.isInteger(projectId) || projectId <= 0 ||
+      !Number.isInteger(itemId) || itemId <= 0
     ) {
       res.status(400).json({ error: "Invalid project or punch item ID" });
       return;
@@ -750,8 +874,25 @@ app.post(
     }
 
     try {
+      const user = await getLoggedInUser(req);
+
+      if (!user) {
+        res.status(401).json({ error: "Please log in first" });
+        return;
+      }
+
+      const userId = Number(user.id);
+
       const item = await prisma.punchItem.findFirst({
-        where: { id: itemId, projectId },
+        where: {
+          id: itemId,
+          projectId,
+          project: {
+            members: {
+              some: { userId },
+            },
+          },
+        },
       });
 
       if (!item) {
@@ -774,7 +915,6 @@ app.post(
   }
 );
 
-
 app.post(
   "/api/projects/:projectId/punch-items/:itemId/photos",
   uploadPhoto.single("file"),
@@ -784,10 +924,8 @@ app.post(
     const file = req.file;
 
     if (
-      !Number.isInteger(projectId) ||
-      projectId <= 0 ||
-      !Number.isInteger(itemId) ||
-      itemId <= 0
+      !Number.isInteger(projectId) || projectId <= 0 ||
+      !Number.isInteger(itemId) || itemId <= 0
     ) {
       if (file) {
         await fs.promises.unlink(file.path).catch(() => {});
@@ -803,8 +941,26 @@ app.post(
     }
 
     try {
+      const user = await getLoggedInUser(req);
+
+      if (!user) {
+        await fs.promises.unlink(file.path).catch(() => {});
+        res.status(401).json({ error: "Please log in first" });
+        return;
+      }
+
+      const userId = Number(user.id);
+
       const item = await prisma.punchItem.findFirst({
-        where: { id: itemId, projectId },
+        where: {
+          id: itemId,
+          projectId,
+          project: {
+            members: {
+              some: { userId },
+            },
+          },
+        },
       });
 
       if (!item) {
@@ -829,7 +985,6 @@ app.post(
     }
   }
 );
-
 
 // Start the server
 app.listen(PORT, () => {

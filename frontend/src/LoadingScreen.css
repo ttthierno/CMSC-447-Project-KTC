@@ -1,0 +1,100 @@
+
+.loading-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--background, #101820);
+  color: var(--text, #f4f6f8);
+  font-family: "Inter", sans-serif;
+  animation: loading-appear 0.35s ease;
+}
+
+.loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.loading-logo-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border: 1px solid var(--gold, #d6b35a);
+  border-radius: 12px;
+  background: var(--surface, #17232d);
+  color: var(--gold-bright, #e4c36a);
+  font-size: 30px;
+  font-weight: 700;
+  animation: logo-float 1.5s ease-in-out infinite alternate;
+}
+
+.loading-logo-text {
+  margin: 20px 0 0;
+  color: var(--text, #f4f6f8);
+  font-family: "Inter", sans-serif;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.8px;
+}
+
+.loading-tagline {
+  margin: 8px 0 30px;
+  color: var(--muted, #9ba8b5);
+  font-family: "Inter", sans-serif;
+  font-size: 14px;
+}
+
+.loading-progress {
+  width: 140px;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--surface-hover, #25323e);
+}
+
+.loading-progress-bar {
+  width: 40%;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--gold, #d6b35a);
+  animation: loading-progress 1.2s ease-in-out infinite;
+}
+
+.loading-footer {
+  position: absolute;
+  bottom: 30px;
+  color: var(--muted, #9ba8b5);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 1.5px;
+}
+
+@keyframes loading-progress {
+  from { transform: translateX(-110%); }
+  to { transform: translateX(380%); }
+}
+
+@keyframes logo-float {
+  from { transform: translateY(0); }
+  to { transform: translateY(-4px); }
+}
+
+@keyframes loading-appear {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading-screen,
+  .loading-logo-mark,
+  .loading-progress-bar {
+    animation: none;
+  }
+}

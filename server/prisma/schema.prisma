@@ -49,16 +49,18 @@ model PunchItem {
 }
 
 model User {
-  id            Int             @id @default(autoincrement())
-  name          String
-  email         String          @unique
-  createdAt     DateTime        @default(now())
-  emailVerified Boolean         @default(false)
-  image         String?
-  updatedAt     DateTime        @default(now()) @updatedAt
-  memberships   ProjectMember[]
-  sessions      Session[]
-  accounts      Account[]
+  id              Int             @id @default(autoincrement())
+  name            String
+  email           String          @unique
+  createdAt       DateTime        @default(now())
+  emailVerified   Boolean         @default(false)
+  image           String?
+  updatedAt       DateTime        @default(now()) @updatedAt
+  displayUsername String?
+  username        String          @unique
+  memberships     ProjectMember[]
+  accounts        Account[]
+  sessions        Session[]
 }
 
 model ProjectMember {
@@ -91,7 +93,6 @@ model PunchItemPhoto {
   punchItem    PunchItem @relation(fields: [punchItemId], references: [id], onDelete: Cascade)
 }
 
-
 model Session {
   id        Int      @id @default(autoincrement())
   expiresAt DateTime
@@ -108,11 +109,10 @@ model Session {
 }
 
 model Account {
-  id                    Int      @id @default(autoincrement())
+  id                    Int       @id @default(autoincrement())
   accountId             String
   providerId            String
   userId                Int
-  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   accessToken           String?
   refreshToken          String?
   idToken               String?
@@ -120,8 +120,9 @@ model Account {
   refreshTokenExpiresAt DateTime?
   scope                 String?
   password              String?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @default(now()) @updatedAt
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @default(now()) @updatedAt
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("account")

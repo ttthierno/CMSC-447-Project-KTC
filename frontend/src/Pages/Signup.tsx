@@ -1,9 +1,11 @@
 
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { authClient } from "../auth-client";
 
 function Signup() {
   const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -14,12 +16,21 @@ function Signup() {
     event.preventDefault();
     setError("");
     setMessage("");
+
+    const cleanUsername = username.trim();
+
+    if (!/^[a-zA-Z0-9_]+$/.test(cleanUsername)) {
+      setError("Username can only contain letters, numbers, and underscores.");
+      return;
+    }
+
     setLoading(true);
 
     try {
       const result = await authClient.signUp.email({
-        name,
-        email,
+        name: name.trim(),
+        username: cleanUsername,
+        email: email.trim(),
         password,
       });
 
@@ -31,8 +42,13 @@ function Signup() {
       setMessage(
         "Account created! Check the server terminal for your email verification link."
       );
-    } catch {
-      setError("Unable to create your account. Please try again.");
+    } catch (err) {
+      console.error("Signup error:", err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to create your account. Please try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -47,8 +63,22 @@ function Signup() {
         <label htmlFor="name">Full name</label>
         <input
           id="name"
+          type="text"
+          autoComplete="name"
           value={name}
           onChange={(event) => setName(event.target.value)}
+          required
+        />
+
+        <label htmlFor="username">Username</label>
+        <input
+          id="username"
+          type="text"
+          autoComplete="username"
+          value={username}
+          onChange={(event) => setUsername(event.target.value)}
+          minLength={3}
+          maxLength={30}
           required
         />
 
@@ -56,6 +86,7 @@ function Signup() {
         <input
           id="email"
           type="email"
+          autoComplete="email"
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           required
@@ -65,6 +96,7 @@ function Signup() {
         <input
           id="password"
           type="password"
+          autoComplete="new-password"
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           minLength={8}
@@ -79,7 +111,7 @@ function Signup() {
         </button>
 
         <p>
-          Already have an account? <a href="/login">Sign in</a>
+          Already have an account? <Link to="/login">Sign in</Link>
         </p>
       </form>
     </div>

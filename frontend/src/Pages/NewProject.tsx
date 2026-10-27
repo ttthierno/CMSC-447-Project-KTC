@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -22,21 +21,37 @@ function NewProject() {
         "http://localhost:3000/api/projects",
         {
           method: "POST",
+          credentials: "include",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ name, description }),
+          body: JSON.stringify({
+            name: name.trim(),
+            description: description.trim(),
+          }),
         }
       );
 
+      const responseText = await response.text();
+
       if (!response.ok) {
-        throw new Error("Could not create project.");
+        console.error("Project creation failed:", response.status, responseText);
+        throw new Error(
+          `Request failed (${response.status}): ${
+            responseText || "No error details returned."
+          }`
+        );
       }
 
-      await response.json();
       navigate("/projects");
-    } catch {
-      setError("Could not create project. Please try again.");
+    } catch (err) {
+      console.error("Create project error:", err);
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Could not create project. Please try again."
+      );
     } finally {
       setLoading(false);
     }
