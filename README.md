@@ -1,12 +1,10 @@
-# KonTraCk - Sprint 2 merged demo
+# KonTraCk - Sprint 2
 
 This version connects the existing React / Express application to the supplied KTC PostgreSQL design. The working Sprint 2 path is: sign in, open a project, upload and view a PDF, place an item, edit its description, and restore its saved location after reload, zoom, and layout changes.
 
 ## Start on Windows or Ubuntu WSL
 
 Use Node.js 24 and npm 10.9.2. The verified environment used Windows x64 and Node 24.19. Internet access is needed for the first dependency installation. Docker and a separately installed PostgreSQL server are not required.
-
-For step-by-step Ubuntu installation, GitHub login and merge commands, see [Windows + WSL merge guide](docs/WINDOWS-WSL-MERGE.md). On this computer only docker-desktop was installed in WSL; Ubuntu needs to be added. The teammate frontend is the visual baseline.
 
 From the repository root:
 
@@ -63,13 +61,5 @@ npm --prefix frontend run lint
 
 API tests create an isolated test project and clean it up. Merge compatibility tests also check username migration, signup, uniqueness, profile changes and username login. The supplied database suite runs inside a rolled-back transaction. Both target this local demo only.
 
-## Guides
 
-- [Demo walkthrough](docs/DEMO-WALKTHROUGH.md)
-- [Changes and Sprint 2 coverage](docs/SPRINT2-CHANGES.md)
-- [Database integration and existing-data boundary](docs/DATABASE-INTEGRATION.md)
-- [Windows + WSL GitHub merge instructions](docs/WINDOWS-WSL-MERGE.md)
-- [Verification results and limits](docs/VERIFICATION.md)
-
-Database support for markups and export jobs does not mean their complete application workflows have been implemented. This is a local Sprint 2 demonstration; it is not a production deployment or a completed migration of an existing populated team database.
 
