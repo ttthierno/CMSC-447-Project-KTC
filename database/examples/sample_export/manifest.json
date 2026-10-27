@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "project_id": "a0000000-0000-0000-0000-000000000001",
+  "generated_at": "2026-10-19T12:00:00Z",
+  "format": "zip_v1",
+  "entries": [
+    {
+      "kind": "metadata",
+      "record_id": null,
+      "archive_path": "project.json",
+      "source_ref": null,
+      "content_type": "application/json",
+      "size_bytes": 4517,
+      "sha256": "5a714df9c3d245bf65e0ae120f179c3fefb0e0e809c230ebc1bd1e247eec0542"
+    },
+    {
+      "kind": "metadata",
+      "record_id": null,
+      "archive_path": "punch-items.csv",
+      "source_ref": null,
+      "content_type": "text/csv",
+      "size_bytes": 492,
+      "sha256": "46ed8399414bb84bd72e3fcf79a83bba061315f699cd420814721e8429b7dbcc"
+    },
+    {
+      "kind": "drawing",
+      "record_id": "c0000000-0000-0000-0000-000000000001",
+      "archive_path": "assets/drawings/c0000000-0000-0000-0000-000000000001.pdf",
+      "source_ref": "projects/a0000000-0000-0000-0000-000000000001/drawings/c0000000-0000-0000-0000-000000000001/source.pdf",
+      "content_type": "application/pdf",
+      "size_bytes": 1685,
+      "sha256": "b0290d901f209ef78b70459d2624e751a93e4806d0e3910acb5c09609f1a715e"
+    },
+    {
+      "kind": "photo",
+      "record_id": "e0000000-0000-0000-0000-000000000001",
+      "archive_path": "assets/photos/e0000000-0000-0000-0000-000000000001.png",
+      "source_ref": "projects/a0000000-0000-0000-0000-000000000001/photos/e0000000-0000-0000-0000-000000000001/original",
+      "content_type": "image/png",
+      "size_bytes": 69,
+      "sha256": "e878950f8091ec010cf5cc723bdea027a8539cf7147cfea199c2f666232dcd4e"
+    }
+  ]
+}

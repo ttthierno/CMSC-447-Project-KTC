@@ -1,26 +1,27 @@
+import { apiFetch } from "../api";
 
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 type Drawing = {
-  id: number;
+  id: string;
   name: string;
 };
 
 type PunchItemData = {
-  id: number;
+  id: string;
   title: string;
   description: string | null;
   status: string;
   priority: string;
-  projectId: number;
-  drawingId: number | null;
+  projectId: string;
+  drawingId: string | null;
   markerX: number | null;
   markerY: number | null;
 };
 
 type Project = {
-  id: number;
+  id: string;
   name: string;
   drawings: Drawing[];
   punchItems: PunchItemData[];
@@ -31,7 +32,7 @@ type ListItem = PunchItemData & {
   drawingName: string | null;
 };
 
-type Filter = "ALL" | "OPEN" | "IN_PROGRESS" | "COMPLETED";
+type Filter = "ALL" | "OPEN" | "IN_PROGRESS" | "READY_FOR_REVIEW" | "COMPLETED";
 
 function PunchList() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -51,7 +52,7 @@ function PunchList() {
       setError("");
 
       try {
-        const response = await fetch("http://localhost:3000/api/projects");
+        const response = await apiFetch("/api/projects");
 
         if (!response.ok) {
           throw new Error("Could not load projects and punch items.");
@@ -64,7 +65,7 @@ function PunchList() {
         setProjects(data);
 
         const selectedProject = projectId
-          ? data.find((project) => project.id === Number(projectId))
+          ? data.find((project) => project.id === projectId)
           : null;
 
         if (projectId && !selectedProject) {
@@ -72,7 +73,7 @@ function PunchList() {
         }
 
         const selectedProjects = projectId
-          ? data.filter((project) => project.id === Number(projectId))
+          ? data.filter((project) => project.id === projectId)
           : data;
 
         const allItems: ListItem[] = selectedProjects.flatMap((project) =>
@@ -120,7 +121,8 @@ function PunchList() {
     const normalized = status.toUpperCase().replace(/\s+/g, "_");
 
     if (normalized === "IN_PROGRESS") return "In Progress";
-    if (normalized === "COMPLETED") return "Completed";
+    if (normalized === "COMPLETED") return "Closed";
+    if (normalized === "READY_FOR_REVIEW") return "Ready for review";
     return "Open";
   }
 
@@ -147,9 +149,9 @@ function PunchList() {
   }
 
   const newItemUrl = projectId
-    ? `/projects/${projectId}/punch-list/new`
+    ? `/projects/${projectId}/plans`
     : newItemProject
-      ? `/projects/${newItemProject}/punch-list/new`
+      ? `/projects/${newItemProject}/plans`
       : null;
 
   return (
@@ -205,7 +207,8 @@ function PunchList() {
             ["ALL", "All"],
             ["OPEN", "Open"],
             ["IN_PROGRESS", "In Progress"],
-            ["COMPLETED", "Completed"],
+            ["READY_FOR_REVIEW", "Ready for review"],
+            ["COMPLETED", "Closed"],
           ] as [Filter, string][]
         ).map(([value, label]) => (
           <button

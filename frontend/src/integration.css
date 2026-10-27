@@ -1,0 +1,17 @@
+/* Functional additions only. Teammate App.css and all existing page styles are unchanged. */
+.sprint2-plans .drawing-scroll {
+  display: block;
+  overflow: auto;
+  max-height: 70vh;
+  touch-action: pan-x pan-y;
+}
+.sprint2-plans .drawing-scroll .react-pdf__Document { width: max-content; }
+.sprint2-plans .plans-layout { grid-template-columns: 220px minmax(0, 1fr); }
+.sprint2-plans .drawing-header { height: auto; min-height: 60px; padding: 12px 20px; flex-wrap: wrap; gap: 12px; }
+.sprint2-plans .drawing-header > div:first-child { min-width: 0; overflow-wrap: anywhere; }
+.sprint2-plans .drawing-tools { flex-wrap: wrap; gap: 8px; }
+.sprint2-plans .drawing-tools button[aria-pressed="true"] { outline: 2px solid var(--accent); }
+.sprint2-plans .drawing-tools button:disabled { opacity: .45; cursor: default; }
+.sprint2-plans .drawing-item.active strong { color: #17202a; }
+.sprint2-plans .viewer-hint { padding: 0 16px; }
+.saved-version { font-size: 14px; color: var(--muted-text); }

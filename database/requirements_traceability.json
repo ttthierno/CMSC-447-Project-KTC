@@ -1,0 +1,310 @@
+[
+  {
+    "requirement": "FR-1.1",
+    "name": "Create project",
+    "use_case": "UC 1",
+    "implementation": "ProjectService.create; create_project",
+    "verification": "Create project and first admin atomically."
+  },
+  {
+    "requirement": "FR-1.2",
+    "name": "View projects",
+    "use_case": "Access",
+    "implementation": "ProjectList; project RLS",
+    "verification": "Only memberships appear in project list."
+  },
+  {
+    "requirement": "FR-1.3",
+    "name": "Open project",
+    "use_case": "Access",
+    "implementation": "Workspace; role_in_project",
+    "verification": "Reject unrelated project UUID."
+  },
+  {
+    "requirement": "FR-1.4",
+    "name": "Upload PDF",
+    "use_case": "UC 2",
+    "implementation": "DrawingService.upload; drawing/page",
+    "verification": "Verify PDF bytes; commit all pages."
+  },
+  {
+    "requirement": "FR-1.5",
+    "name": "View PDF",
+    "use_case": "UC 3",
+    "implementation": "DrawingViewer; signedRead",
+    "verification": "Open authorized original PDF."
+  },
+  {
+    "requirement": "FR-1.6",
+    "name": "Associate drawing",
+    "use_case": "UC 2",
+    "implementation": "drawing.project_id; composite FKs",
+    "verification": "Cross-project associations fail."
+  },
+  {
+    "requirement": "FR-1.7",
+    "name": "Navigate drawing",
+    "use_case": "UC 3",
+    "implementation": "PDF.js viewport controls",
+    "verification": "Pan, zoom and page switch on tablet."
+  },
+  {
+    "requirement": "FR-2.1",
+    "name": "Create item",
+    "use_case": "UC 4",
+    "implementation": "PunchItemService.create; punch_item",
+    "verification": "Inspector creates authorized item."
+  },
+  {
+    "requirement": "FR-2.2",
+    "name": "Record description",
+    "use_case": "UC 4",
+    "implementation": "ItemPanel; description CHECK",
+    "verification": "Blank/overlong description rejected."
+  },
+  {
+    "requirement": "FR-2.3",
+    "name": "Save item",
+    "use_case": "UC 4",
+    "implementation": "Repository transaction; item FKs",
+    "verification": "Atomic insert and history event."
+  },
+  {
+    "requirement": "FR-2.4",
+    "name": "View item",
+    "use_case": "UC 5 / 9",
+    "implementation": "ItemPanel; item/evidence SELECT",
+    "verification": "Load correct associated evidence."
+  },
+  {
+    "requirement": "FR-2.5",
+    "name": "Edit item",
+    "use_case": "UC 5",
+    "implementation": "updateAtVersion; guard_punch_item",
+    "verification": "Authorized edit and stale conflict."
+  },
+  {
+    "requirement": "FR-2.6",
+    "name": "Persist item",
+    "use_case": "UC 5",
+    "implementation": "PostgreSQL; persistent data volume",
+    "verification": "Reopen after process restart."
+  },
+  {
+    "requirement": "FR-3.1",
+    "name": "Select location",
+    "use_case": "UC 6",
+    "implementation": "DrawingViewer inverse transform",
+    "verification": "Pointer maps to correct PDF page."
+  },
+  {
+    "requirement": "FR-3.2",
+    "name": "Display marker",
+    "use_case": "UC 6",
+    "implementation": "MarkerLayer; x_ratio/y_ratio",
+    "verification": "Marker appears at saved location."
+  },
+  {
+    "requirement": "FR-3.3",
+    "name": "Store location",
+    "use_case": "UC 6",
+    "implementation": "punch_item page FK and numeric fields",
+    "verification": "Invalid page or coordinate rejected."
+  },
+  {
+    "requirement": "FR-3.4",
+    "name": "Preserve position",
+    "use_case": "UC 6",
+    "implementation": "Immutable anchor; viewport projection",
+    "verification": "Zoom, resize, rotate and device replay."
+  },
+  {
+    "requirement": "FR-3.5",
+    "name": "Add markup",
+    "use_case": "Markup",
+    "implementation": "EvidenceService.markup; markup",
+    "verification": "Create page or item annotation."
+  },
+  {
+    "requirement": "FR-3.6",
+    "name": "Save markup",
+    "use_case": "Markup",
+    "implementation": "valid_geometry; page/item FKs",
+    "verification": "Reload valid markup; reject bad geometry."
+  },
+  {
+    "requirement": "FR-4.1",
+    "name": "Upload photo",
+    "use_case": "UC 7",
+    "implementation": "EvidenceService.photo; photo",
+    "verification": "Validate image; retain correct item."
+  },
+  {
+    "requirement": "FR-4.2",
+    "name": "View photo",
+    "use_case": "UC 7",
+    "implementation": "EvidencePanel; authorized file read",
+    "verification": "Open correct image; deny outsider."
+  },
+  {
+    "requirement": "FR-4.3",
+    "name": "Add comment",
+    "use_case": "UC 7",
+    "implementation": "EvidenceService.comment; comment",
+    "verification": "Nonblank comment with actual author."
+  },
+  {
+    "requirement": "FR-4.4",
+    "name": "View comments",
+    "use_case": "UC 7",
+    "implementation": "EvidencePanel; comment_on_item",
+    "verification": "Display comments in stable time order."
+  },
+  {
+    "requirement": "FR-4.5",
+    "name": "Preserve evidence",
+    "use_case": "UC 7",
+    "implementation": "Composite item and member FKs",
+    "verification": "Reject cross-project evidence."
+  },
+  {
+    "requirement": "FR-5.1",
+    "name": "Assign item",
+    "use_case": "UC 8",
+    "implementation": "PunchItemService.update; assignee FK",
+    "verification": "Assign eligible project member."
+  },
+  {
+    "requirement": "FR-5.2",
+    "name": "Display assignee",
+    "use_case": "UC 8",
+    "implementation": "ItemPanel; visible user profile",
+    "verification": "Display current responsible user."
+  },
+  {
+    "requirement": "FR-5.3",
+    "name": "Validate assignment",
+    "use_case": "UC 8",
+    "implementation": "guard_punch_item; member lock",
+    "verification": "Reject inactive or unrelated assignee."
+  },
+  {
+    "requirement": "FR-5.4",
+    "name": "Display status",
+    "use_case": "UC 8",
+    "implementation": "ItemPanel; punch_status enum",
+    "verification": "Show stored workflow state."
+  },
+  {
+    "requirement": "FR-5.5",
+    "name": "Update status",
+    "use_case": "UC 8",
+    "implementation": "guard_punch_item; history trigger",
+    "verification": "Accept only permitted transitions."
+  },
+  {
+    "requirement": "FR-5.6",
+    "name": "Validate status rights",
+    "use_case": "UC 8",
+    "implementation": "Role checks and item RLS",
+    "verification": "Contractor cannot close own work."
+  },
+  {
+    "requirement": "FR-6.1",
+    "name": "View item list",
+    "use_case": "UC 9",
+    "implementation": "ReviewFilters; project-scoped SELECT",
+    "verification": "Only current project results appear."
+  },
+  {
+    "requirement": "FR-6.2",
+    "name": "Filter status",
+    "use_case": "UC 9",
+    "implementation": "status predicate and index",
+    "verification": "All results match selected state."
+  },
+  {
+    "requirement": "FR-6.3",
+    "name": "Filter assignee",
+    "use_case": "UC 9",
+    "implementation": "assignee predicate and index",
+    "verification": "All results match selected user."
+  },
+  {
+    "requirement": "FR-6.4",
+    "name": "Review details",
+    "use_case": "UC 9",
+    "implementation": "ItemPanel; scoped evidence queries",
+    "verification": "Show description, location and evidence."
+  },
+  {
+    "requirement": "FR-6.5",
+    "name": "Accurate filters",
+    "use_case": "UC 9",
+    "implementation": "Combined parameterized predicates",
+    "verification": "Combined filters return intersection."
+  },
+  {
+    "requirement": "FR-7.1",
+    "name": "Generate export",
+    "use_case": "Export",
+    "implementation": "ExportService; request/claim functions",
+    "verification": "Authorized job reaches verified result."
+  },
+  {
+    "requirement": "FR-7.2",
+    "name": "Project-only export",
+    "use_case": "Export",
+    "implementation": "export_snapshot(project, requester)",
+    "verification": "No unrelated project data or assets."
+  },
+  {
+    "requirement": "FR-7.3",
+    "name": "Include item data",
+    "use_case": "Export",
+    "implementation": "Snapshot JSON; ZIP/CSV formatter",
+    "verification": "Verify IDs, statuses and asset checksums."
+  },
+  {
+    "requirement": "FR-7.4",
+    "name": "Download export",
+    "use_case": "Export",
+    "implementation": "ExportService.download; job metadata",
+    "verification": "Deny expired or unauthorized download."
+  },
+  {
+    "requirement": "FR-8.1",
+    "name": "View members",
+    "use_case": "Admin",
+    "implementation": "ProjectService; project_user SELECT",
+    "verification": "Admin sees project membership list."
+  },
+  {
+    "requirement": "FR-8.2",
+    "name": "Add member",
+    "use_case": "Admin",
+    "implementation": "set_project_member",
+    "verification": "Add existing eligible account."
+  },
+  {
+    "requirement": "FR-8.3",
+    "name": "Manage membership",
+    "use_case": "Admin",
+    "implementation": "set_project_member; last-admin check",
+    "verification": "Retain admin; clear assignments first."
+  },
+  {
+    "requirement": "FR-8.4",
+    "name": "Enforce access",
+    "use_case": "Admin",
+    "implementation": "Session middleware; RLS",
+    "verification": "No identity/inactive/outsider denied."
+  },
+  {
+    "requirement": "FR-8.5",
+    "name": "Enforce roles",
+    "use_case": "Admin",
+    "implementation": "Grants, policies and guard triggers",
+    "verification": "Non-admin cannot upload or promote self."
+  }
+]

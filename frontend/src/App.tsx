@@ -1,4 +1,5 @@
 import './App.css';
+import './integration.css';
 import './Projects.css';
 import './ProjectDashboard.css';
 
@@ -37,6 +38,7 @@ function App() {
 function AppContent() {
   const { data: session, isPending } = authClient.useSession();
   const location = useLocation();
+  const activeProject = location.pathname.match(/^\/projects\/([0-9a-f-]{36})(?:\/|$)/i)?.[1];
 
   const [isLoading, setIsLoading] = useState(true);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -126,7 +128,7 @@ function AppContent() {
           </Link>
 
           <Link
-            to="/drawings"
+            to={activeProject ? `/projects/${activeProject}/plans` : "/projects"}
             className="nav-item"
             title="Drawings"
           >
@@ -135,7 +137,7 @@ function AppContent() {
           </Link>
 
           <Link
-            to="/punch-list"
+            to={activeProject ? `/projects/${activeProject}/punch-list` : "/projects"}
             className="nav-item"
             title="Punch List"
           >
@@ -143,7 +145,7 @@ function AppContent() {
             <span>Punch List</span>
           </Link>
 
-          <Link to="/team" className="nav-item" title="Team">
+          <Link to={activeProject ? `/projects/${activeProject}/team` : "/projects"} className="nav-item" title="Team">
             <span className="nav-icon">♙</span>
             <span>Team</span>
           </Link>
@@ -219,12 +221,12 @@ function AppContent() {
             path="/projects/:id/team"
             element={<Team />}
           />
-          <Route path="/team" element={<Team />} />
+          <Route path="/team" element={<Navigate to="/projects" replace />} />
           <Route
             path="/drawings"
-            element={<PagePlaceholder title="Drawings" />}
+            element={<Navigate to="/projects" replace />}
           />
-          <Route path="/punch-list" element={<PunchList />} />
+          <Route path="/punch-list" element={<Navigate to="/projects" replace />} />
           <Route path="/settings" element={<UserSetup />} />
           <Route
             path="/test"
@@ -236,19 +238,6 @@ function AppContent() {
           />
         </Routes>
       </main>
-    </div>
-  );
-}
-
-function PagePlaceholder({ title }: { title: string }) {
-  return (
-    <div className="page">
-      <div className="page-header">
-        <div>
-          <h2>{title}</h2>
-          <p>This section will be built next.</p>
-        </div>
-      </div>
     </div>
   );
 }

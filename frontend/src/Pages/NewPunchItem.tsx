@@ -1,3 +1,4 @@
+import { apiFetch } from "../api";
 
 import { useState } from "react";
 import {
@@ -18,7 +19,7 @@ function NewPunchItem() {
   const markerYValue = searchParams.get("markerY");
 
   const drawingId =
-    drawingIdValue !== null ? Number(drawingIdValue) : null;
+    drawingIdValue;
   const pageNumber =
     pageNumberValue !== null ? Number(pageNumberValue) : null;
   const markerX = markerXValue !== null ? Number(markerXValue) : null;
@@ -26,8 +27,7 @@ function NewPunchItem() {
 
   const hasMarker =
     drawingId !== null &&
-    Number.isInteger(drawingId) &&
-    drawingId > 0 &&
+    /^[0-9a-f-]{36}$/i.test(drawingId) &&
     pageNumber !== null &&
     Number.isInteger(pageNumber) &&
     pageNumber > 0 &&
@@ -52,8 +52,8 @@ function NewPunchItem() {
     event.preventDefault();
     setError("");
 
-    if (!projectId) {
-      setError("A project must be selected.");
+    if (!projectId || !hasMarker) {
+      setError("Choose a location on a project drawing first.");
       return;
     }
 
@@ -64,7 +64,7 @@ function NewPunchItem() {
         title: string;
         description: string;
         priority: string;
-        drawingId?: number;
+        drawingId?: string;
         pageNumber?: number;
         markerX?: number;
         markerY?: number;
@@ -81,8 +81,8 @@ function NewPunchItem() {
         body.markerY = markerY!;
       }
 
-      const response = await fetch(
-        `http://localhost:3000/api/projects/${projectId}/punch-items`,
+      const response = await apiFetch(
+        `/api/projects/${projectId}/punch-items`,
         {
           method: "POST",
           headers: {
@@ -98,7 +98,7 @@ function NewPunchItem() {
         throw new Error(data.error || "Could not create punch item.");
       }
 
-      navigate(`/projects/${projectId}/punch-list`);
+      navigate(`/projects/${projectId}/punch-list/${data.id}`);
     } catch (error) {
       setError(
         error instanceof Error
@@ -123,11 +123,12 @@ function NewPunchItem() {
         </div>
       </div>
 
+      {!hasMarker && <p role="alert">Open Plans and select the drawing location before creating an item.</p>}
       {hasMarker && (
         <div className="detail-card">
           <strong>Drawing location selected</strong>
           <p>
-            Drawing #{drawingId}, page {pageNumber}. The marker location will
+            Page {pageNumber}. The marker location will
             be saved with this punch item.
           </p>
         </div>
@@ -139,7 +140,8 @@ function NewPunchItem() {
           id="punch-title"
           value={title}
           onChange={(event) => setTitle(event.target.value)}
-          placeholder="e.g. scam"
+          placeholder="e.g. Verify the door closer"
+          maxLength={200}
           required
         />
 
@@ -150,6 +152,8 @@ function NewPunchItem() {
           onChange={(event) => setDescription(event.target.value)}
           placeholder="Describe the issue"
           rows={4}
+          required
+          maxLength={10000}
         />
 
         <label htmlFor="punch-priority">Priority</label>
@@ -168,7 +172,7 @@ function NewPunchItem() {
         <button
           type="submit"
           className="primary-button"
-          disabled={loading}
+          disabled={loading || !hasMarker}
         >
           {loading ? "Creating Punch Item..." : "Create Punch Item"}
         </button>
