@@ -1,0 +1,2 @@
+﻿project_id,punch_item_id,drawing_id,drawing_filename,page_number,x_ratio,y_ratio,title,description,status,assignee_user_id,assignee_name,created_at,updated_at,version
+a0000000-0000-0000-0000-000000000001,d0000000-0000-0000-0000-000000000001,c0000000-0000-0000-0000-000000000001,sample-drawing.pdf,1,0.25,0.5,Example door inspection,Verify the door closer in the sample workflow.,open,b0000000-0000-0000-0000-000000000001,Example Administrator,2026-10-19T12:00:00Z,2026-10-19T12:00:00Z,1

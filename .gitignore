@@ -20,3 +20,9 @@ server/schema.before-auth.prisma
 server/index.ts
 frontend/src/app_backup.css
 frontend/src/tsconfig.json
+
+# Integration demo runtime (never commit credentials or data)
+!.env.example
+.local/
+server/storage/
+*.log

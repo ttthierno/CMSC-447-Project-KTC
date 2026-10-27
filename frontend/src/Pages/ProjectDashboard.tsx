@@ -1,23 +1,24 @@
+import { apiFetch } from "../api";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 type Drawing = {
-  id: number;
+  id: string;
   name: string;
 };
 
 type ProjectMember = {
-  id: number;
+  id: string;
   role: string;
   user: {
-    id: number;
+    id: string;
     name: string;
     email: string;
   };
 };
 
 type PunchItemData = {
-  id: number;
+  id: string;
   title: string;
   description: string | null;
   status: string;
@@ -28,7 +29,7 @@ type PunchItemData = {
 };
 
 type Project = {
-  id: number;
+  id: string;
   name: string;
   description: string | null;
   drawings: Drawing[];
@@ -40,6 +41,7 @@ function statusLabel(status: string) {
   const normalized = status.toUpperCase().replace(/\s+/g, "_");
 
   if (normalized === "IN_PROGRESS") return "In Progress";
+  if (normalized === "READY_FOR_REVIEW") return "Ready for review";
   if (normalized === "COMPLETED") return "Completed";
   return "Open";
 }
@@ -48,6 +50,7 @@ function statusClass(status: string) {
   const normalized = status.toUpperCase().replace(/\s+/g, "_");
 
   if (normalized === "IN_PROGRESS") return "progress";
+  if (normalized === "READY_FOR_REVIEW") return "progress";
   if (normalized === "COMPLETED") return "completed";
   return "open";
 }
@@ -73,8 +76,8 @@ function ProjectDashboard() {
       setError("");
 
       try {
-        const response = await fetch(
-          `http://localhost:3000/api/projects/${id}`,
+        const response = await apiFetch(
+          `/api/projects/${id}`,
           {
             credentials: "include",
           }
@@ -170,7 +173,7 @@ function ProjectDashboard() {
         </div>
 
         <Link
-          to={`/projects/${project.id}/punch-list/new`}
+          to={`/projects/${project.id}/plans`}
           className="primary-button"
         >
           + New Punch Item
@@ -231,7 +234,7 @@ function ProjectDashboard() {
 
       <div className="dashboard-section">
         <div className="section-header">
-          <h3>Punch Item Progress</h3>
+          <h3>Punch Item Progress ({punchItems.filter((item) => item.status === "READY_FOR_REVIEW").length} ready for review)</h3>
           <Link
             to={`/projects/${project.id}/punch-list`}
             className="view-project"
@@ -324,7 +327,7 @@ function ProjectDashboard() {
                   <span>
                     {member.role === "ADMIN"
                       ? "Project Administrator"
-                      : "Project Member"}
+                      : member.role.charAt(0) + member.role.slice(1).toLowerCase()}
                   </span>
                 </div>
               </div>

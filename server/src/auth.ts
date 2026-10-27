@@ -7,7 +7,10 @@ import { username } from "better-auth/plugins";
 
 const secret = process.env.BETTER_AUTH_SECRET;
 
-if (!secret) {
+if (process.env.DEMO_MODE === "true" && process.env.NODE_ENV === "production")
+  throw new Error("Demo mode cannot run in production.");
+
+if (!secret || secret.length < 32) {
   throw new Error(
     "BETTER_AUTH_SECRET is missing from the server .env file."
   );
@@ -23,6 +26,7 @@ export const auth = betterAuth({
   secret,
 
   trustedOrigins: [
+    process.env.FRONTEND_URL || "http://localhost:5173",
     "http://localhost:5173",
     "http://localhost:5174",
     "http://localhost:5175",

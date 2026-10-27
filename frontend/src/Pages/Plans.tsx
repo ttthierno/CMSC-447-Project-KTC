@@ -1,402 +1,394 @@
-
-import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Link,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 import { Document, Page, pdfjs } from "react-pdf";
-import "react-pdf/dist/Page/AnnotationLayer.css";
-import "react-pdf/dist/Page/TextLayer.css";
-
+import { apiFetch } from "../api";
+import { anchorToDisplay, displayToAnchor } from "../anchors";
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
-  import.meta.url
+  import.meta.url,
 ).toString();
-
-type Drawing = {
-  id: number;
-  name: string;
-  fileUrl: string | null;
-  projectId: number;
-};
-
-type PunchItemData = {
-  id: number;
+type Drawing = { id: string; name: string; fileUrl: string; pageCount: number };
+type Item = {
+  id: string;
   title: string;
+  drawingId: string;
+  pageNumber: number;
+  markerX: number;
+  markerY: number;
   status: string;
-  drawingId: number | null;
-  markerX: number | null;
-  markerY: number | null;
-  pageNumber: number | null;
 };
-
-type ProjectData = {
-  id: number;
-  name: string;
-  drawings: Drawing[];
-  punchItems: PunchItemData[];
-};
-
-function Plans() {
-  const { id } = useParams<{ id: string }>();
+type Project = { drawings: Drawing[]; punchItems: Item[]; currentRole: string };
+export default function Plans() {
+  const { id } = useParams();
   const navigate = useNavigate();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
+  const [query, setQuery] = useSearchParams();
+  const input = useRef<HTMLInputElement>(null);
+  const viewport = useRef<HTMLDivElement>(null);
+  const drag = useRef<{
+    x: number;
+    y: number;
+    left: number;
+    top: number;
+  } | null>(null);
   const [drawings, setDrawings] = useState<Drawing[]>([]);
-  const [punchItems, setPunchItems] = useState<PunchItemData[]>([]);
-  const [selectedDrawingId, setSelectedDrawingId] = useState<number | null>(
-    null
-  );
-  const [pageNumber, setPageNumber] = useState(1);
-  const [numPages, setNumPages] = useState(0);
+  const [items, setItems] = useState<Item[]>([]);
+  const [drawingId, setDrawingId] = useState<string | null>(null);
+  const [role, setRole] = useState("");
+  const [page, setPage] = useState(Number(query.get("page")) || 1);
+  const [pages, setPages] = useState(0);
+  const [zoom, setZoom] = useState(1);
+  const [pageWidth, setPageWidth] = useState(620);
+  const [rotation, setRotation] = useState(0);
+  const [mode, setMode] = useState<"pan" | "pin">("pan");
+  const [renderKey, setRenderKey] = useState("");
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-
   useEffect(() => {
     let cancelled = false;
-
-    async function loadProject() {
-      if (!id) {
-        setError("Select a project to view its drawings.");
-        setLoading(false);
-        return;
-      }
-
-      setLoading(true);
-      setError("");
-
+    void (async () => {
       try {
-        const response = await fetch(
-          `http://localhost:3000/api/projects/${id}`
-        );
-        const data: ProjectData = await response.json();
-
-        if (!response.ok) {
-          throw new Error("Could not load project drawings.");
-        }
-
+        const response = await apiFetch(`/api/projects/${id}`);
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error);
         if (!cancelled) {
-          setDrawings(data.drawings ?? []);
-          setPunchItems(data.punchItems ?? []);
-          setSelectedDrawingId(data.drawings?.[0]?.id ?? null);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setError(
-            error instanceof Error
-              ? error.message
-              : "Could not connect to the backend."
+          const p = data as Project;
+          setDrawings(p.drawings);
+          setItems(p.punchItems);
+          setRole(p.currentRole);
+          setDrawingId(
+            p.drawings.find((d) => d.id === query.get("drawingId"))?.id ||
+              p.drawings[0]?.id ||
+              null,
           );
         }
+      } catch (e) {
+        if (!cancelled)
+          setError(e instanceof Error ? e.message : "Unable to load drawings");
       } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
+        if (!cancelled) setLoading(false);
       }
-    }
-
-    loadProject();
-
+    })();
     return () => {
       cancelled = true;
     };
-  }, [id]);
-
+  }, [id, query]);
   useEffect(() => {
-    setPageNumber(1);
-    setNumPages(0);
-  }, [selectedDrawingId]);
-
-  const selectedDrawing =
-    drawings.find((drawing) => drawing.id === selectedDrawingId) ?? null;
-
-  const visiblePins = punchItems.filter(
-    (item) =>
-      item.drawingId === selectedDrawingId &&
-      item.pageNumber === pageNumber &&
-      item.markerX !== null &&
-      item.markerY !== null
+    if (!viewport.current) return;
+    const observer = new ResizeObserver(([entry]) =>
+      setPageWidth(Math.max(260, Math.min(850, entry.contentRect.width - 40))),
+    );
+    observer.observe(viewport.current);
+    return () => observer.disconnect();
+  }, [loading]);
+  const currentRenderKey = `${drawingId}/${page}/${zoom}/${pageWidth}`;
+  const rendered = renderKey === currentRenderKey;
+  const selected = drawings.find((d) => d.id === drawingId);
+  const pdfUrl = selected?.fileUrl;
+  const pdfFile = useMemo(
+    () => (pdfUrl ? { url: pdfUrl, withCredentials: true } : null),
+    [pdfUrl],
   );
-
-  async function handleFileSelected(
-    event: React.ChangeEvent<HTMLInputElement>
-  ) {
+  const pins = items.filter(
+    (i) => i.drawingId === drawingId && i.pageNumber === page,
+  );
+  const canCreate = ["ADMIN", "INSPECTOR"].includes(role);
+  function selectPage(nextPage: number, nextDrawing = drawingId) {
+    setPage(nextPage);
+    if (nextDrawing) setQuery({ drawingId: nextDrawing, page: String(nextPage) }, { replace: true });
+  }
+  async function upload(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = "";
-
-    if (!file || !id) return;
-
+    if (!file) return;
     if (
-      file.type !== "application/pdf" ||
-      !file.name.toLowerCase().endsWith(".pdf")
+      !file.name.toLowerCase().endsWith(".pdf") ||
+      file.size > 25 * 1024 * 1024
     ) {
-      setError("Please select a PDF file.");
+      setError("Choose a PDF no larger than 25 MB.");
       return;
     }
-
-    if (file.size > 25 * 1024 * 1024) {
-      setError("The PDF must be smaller than 25 MB.");
-      return;
-    }
-
     setUploading(true);
     setError("");
     setMessage("");
-
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("name", file.name.replace(/\.pdf$/i, ""));
-
-      const response = await fetch(
-        `http://localhost:3000/api/projects/${id}/drawings`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Could not upload drawing.");
-      }
-
-      const drawing: Drawing = data;
-
-      setDrawings((current) => [...current, drawing]);
-      setSelectedDrawingId(drawing.id);
-      setMessage("Drawing uploaded successfully.");
-    } catch (error) {
-      setError(
-        error instanceof Error ? error.message : "Could not upload drawing."
-      );
+      const data = new FormData();
+      data.append("file", file);
+      const response = await apiFetch(`/api/projects/${id}/drawings`, {
+        method: "POST",
+        body: data,
+      });
+      const saved = await response.json();
+      if (!response.ok) throw new Error(saved.error);
+      setDrawings((d) => [...d, saved]);
+      setDrawingId(saved.id);
+      selectPage(1, saved.id);
+      setPages(0);
+      setMessage("Drawing uploaded and all pages saved.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Upload failed");
     } finally {
       setUploading(false);
     }
   }
-
-  function handleDrawingClick(
-    event: React.MouseEvent<HTMLDivElement>
-  ) {
-    console.log("Drawing clicked!");
-    if (!id || !selectedDrawing) return;
-
-    const rectangle = event.currentTarget.getBoundingClientRect();
-
-    if (!rectangle.width || !rectangle.height) return;
-
-    const markerX = Math.min(
-      1,
-      Math.max(0, (event.clientX - rectangle.left) / rectangle.width)
+  function place(event: React.MouseEvent<HTMLDivElement>) {
+    if (mode !== "pin" || !canCreate || !rendered || !selected) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const [x, y] = displayToAnchor(
+      (event.clientX - rect.left) / rect.width,
+      (event.clientY - rect.top) / rect.height,
+      rotation,
     );
-
-    const markerY = Math.min(
-      1,
-      Math.max(0, (event.clientY - rectangle.top) / rectangle.height)
-    );
-
-    const query = new URLSearchParams({
-      drawingId: String(selectedDrawing.id),
-      pageNumber: String(pageNumber),
-      markerX: markerX.toFixed(6),
-      markerY: markerY.toFixed(6),
+    const params = new URLSearchParams({
+      drawingId: selected.id,
+      pageNumber: String(page),
+      markerX: Math.min(1, Math.max(0, x)).toFixed(8),
+      markerY: Math.min(1, Math.max(0, y)).toFixed(8),
     });
-
-    navigate(`/projects/${id}/punch-list/new?${query.toString()}`);
+    navigate(`/projects/${id}/punch-list/new?${params}`);
   }
-
-  function onDocumentLoadSuccess(result: { numPages: number }) {
-    setNumPages(result.numPages);
-    setPageNumber(1);
-  }
-
-  const pdfUrl = selectedDrawing?.fileUrl
-    ? `http://localhost:3000${selectedDrawing.fileUrl}`
-    : null;
-
   return (
-    <div className="page">
+    <div className="page sprint2-plans">
       <div className="page-header">
         <div>
           <h2>Plans</h2>
           <p>View drawings and create punch-list items at specific locations.</p>
         </div>
-
-        <button
-          type="button"
-          className="primary-button"
-          disabled={uploading || !id}
-          onClick={() => fileInputRef.current?.click()}
-        >
-          {uploading ? "Uploading..." : "+ Upload Drawing"}
-        </button>
-
+        {role === "ADMIN" && (
+          <button
+            className="primary-button"
+            onClick={() => input.current?.click()}
+            disabled={uploading}
+          >
+            {uploading ? "Uploading..." : "+ Upload Drawing"}
+          </button>
+        )}
         <input
-          ref={fileInputRef}
+          ref={input}
           type="file"
           accept=".pdf,application/pdf"
+          onChange={upload}
           hidden
-          onChange={handleFileSelected}
+          aria-label="Upload PDF drawing"
         />
       </div>
-
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
-
       <div className="plans-layout">
-        <div className="drawings-list">
+        <aside className="drawings-list">
           <h3>Drawings ({drawings.length})</h3>
-
           {loading ? (
-            <p>Loading drawings...</p>
-          ) : drawings.length === 0 ? (
-            <p>No drawings yet. Upload a PDF to get started.</p>
+            <p>Loading...</p>
+          ) : !drawings.length ? (
+            <p>No drawings yet. An administrator can upload a PDF.</p>
           ) : (
-            drawings.map((drawing) => (
+            drawings.map((d) => (
               <button
-                type="button"
-                key={drawing.id}
-                className={`drawing-item ${
-                  drawing.id === selectedDrawingId ? "active" : ""
-                }`}
-                onClick={() => setSelectedDrawingId(drawing.id)}
-                style={{
-                  display: "block",
-                  width: "100%",
-                  textAlign: "left",
-                  cursor: "pointer",
+                key={d.id}
+                className={`drawing-item ${d.id === drawingId ? "active" : ""}`}
+                onClick={() => {
+                  setDrawingId(d.id);
+                  selectPage(1, d.id);
+                  setPages(0);
+                  setRenderKey("");
                 }}
               >
-                <strong>{drawing.name}</strong>
-                <span>PDF drawing</span>
+                <strong>{d.name}</strong>
+                <span>{d.pageCount} pages</span>
               </button>
             ))
           )}
-        </div>
-
-        <div className="drawing-viewer">
+        </aside>
+        <section className="drawing-viewer" aria-label="Drawing viewer">
           <div className="drawing-header">
             <div>
-              <strong>{selectedDrawing?.name ?? "Drawing Viewer"}</strong>
+              <strong>{selected?.name || "Drawing viewer"}</strong>
               <span>
-                {selectedDrawing
-                  ? `Page ${pageNumber}${numPages ? ` of ${numPages}` : ""}`
-                  : "Select or upload a drawing"}
+                Page {page}
+                {pages ? ` of ${pages}` : ""}
               </span>
             </div>
-
             <div className="drawing-tools">
               <button
-                type="button"
-                disabled={pageNumber <= 1}
-                onClick={() => setPageNumber((page) => page - 1)}
+                disabled={page <= 1}
+                onClick={() => selectPage(page - 1)}
               >
                 Previous
               </button>
-
               <button
-                type="button"
-                disabled={!numPages || pageNumber >= numPages}
-                onClick={() => setPageNumber((page) => page + 1)}
+                disabled={!pages || page >= pages}
+                onClick={() => selectPage(page + 1)}
               >
                 Next
               </button>
-
-              {pdfUrl && (
-                <a
-                  href={pdfUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="drawing-punch-link"
+              <button
+                aria-label="Zoom out"
+                disabled={zoom <= 0.5}
+                onClick={() => setZoom((z) => Math.max(0.5, z - 0.25))}
+              >
+                −
+              </button>
+              <span aria-live="polite">{Math.round(zoom * 100)}%</span>
+              <button
+                aria-label="Zoom in"
+                disabled={zoom >= 2.5}
+                onClick={() => setZoom((z) => Math.min(2.5, z + 0.25))}
+              >
+                +
+              </button>
+              <button onClick={() => setZoom(1)}>Fit</button>
+              <button
+                aria-pressed={mode === "pan"}
+                onClick={() => setMode("pan")}
+              >
+                Pan
+              </button>
+              {canCreate && (
+                <button
+                  aria-pressed={mode === "pin"}
+                  onClick={() => setMode("pin")}
                 >
+                  Place punch item
+                </button>
+              )}
+              {selected && (
+                <a className="drawing-punch-link" href={selected.fileUrl} target="_blank" rel="noreferrer">
                   Open PDF
                 </a>
               )}
             </div>
           </div>
-
-          <div className="drawing-canvas">
-            {loading ? (
-              <p>Loading drawings...</p>
-            ) : pdfUrl ? (
+          <p className="viewer-hint">
+            {mode === "pin"
+              ? "Click the drawing to place a new punch item."
+              : "Drag to pan, or select a saved marker to open its item."}
+          </p>
+          <div
+            ref={viewport}
+            className="drawing-canvas drawing-scroll"
+            style={{ cursor: mode === "pan" ? "grab" : "crosshair" }}
+            onPointerDown={(e) => {
+              if (
+                mode === "pan" &&
+                !(e.target as HTMLElement).closest("button")
+              ) {
+                drag.current = {
+                  x: e.clientX,
+                  y: e.clientY,
+                  left: e.currentTarget.scrollLeft,
+                  top: e.currentTarget.scrollTop,
+                };
+                e.currentTarget.setPointerCapture(e.pointerId);
+              }
+            }}
+            onPointerMove={(e) => {
+              if (drag.current) {
+                e.currentTarget.scrollLeft =
+                  drag.current.left - (e.clientX - drag.current.x);
+                e.currentTarget.scrollTop =
+                  drag.current.top - (e.clientY - drag.current.y);
+              }
+            }}
+            onPointerUp={() => {
+              drag.current = null;
+            }}
+            onPointerCancel={() => {
+              drag.current = null;
+            }}
+          >
+            {pdfFile ? (
               <Document
-                file={pdfUrl}
-                onLoadSuccess={onDocumentLoadSuccess}
+                file={pdfFile}
+                onLoadSuccess={({ numPages }) => {
+                  setPages(numPages);
+                  setPage((p) => Math.max(1, Math.min(numPages, p)));
+                }}
                 onLoadError={() =>
-                  setError("Could not display the PDF. Try opening it directly.")
+                  setError(
+                    "Unable to display this PDF. Try reloading the project.",
+                  )
                 }
-                loading={<p>Loading PDF...</p>}
               >
                 <div
-                  onClick={handleDrawingClick}
+                  data-testid="drawing-page"
+                  onClick={place}
                   style={{
                     position: "relative",
                     display: "inline-block",
-                    cursor: "crosshair",
                     lineHeight: 0,
-                    maxWidth: "100%",
                   }}
-                  title="Click a location to create a punch item"
                 >
                   <Page
-                    pageNumber={pageNumber}
-                    width={Math.min(800, Math.max(320, window.innerWidth * 0.55))}
+                    pageNumber={page}
+                    width={pageWidth * zoom}
+                    renderTextLayer={false}
+                    renderAnnotationLayer={false}
+                    onLoadSuccess={(p) => setRotation(p.rotate)}
+                    onRenderSuccess={() => setRenderKey(currentRenderKey)}
                   />
-
-                  {visiblePins.map((pin) => (
-                    <button
-                      type="button"
-                      key={pin.id}
-                      title={pin.title}
-                      aria-label={`Open punch item ${pin.id}: ${pin.title}`}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        navigate(
-                          `/projects/${id}/punch-list/${pin.id}`
-                        );
-                      }}
-                      style={{
-                        position: "absolute",
-                        left: `${pin.markerX! * 100}%`,
-                        top: `${pin.markerY! * 100}%`,
-                        transform: "translate(-50%, -50%)",
-                        width: 30,
-                        height: 30,
-                        borderRadius: "50%",
-                        border: "2px solid white",
-                        background:
-                          pin.status === "COMPLETED"
-                            ? "#16a34a"
-                            : pin.status === "IN_PROGRESS"
-                              ? "#d97706"
-                              : "#dc2626",
-                        color: "white",
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        lineHeight: "26px",
-                        zIndex: 2,
-                      }}
-                    >
-                      {pin.id}
-                    </button>
-                  ))}
+                  {rendered &&
+                    pins.map((pin, index) => {
+                      const [x, y] = anchorToDisplay(
+                        pin.markerX,
+                        pin.markerY,
+                        rotation,
+                      );
+                      return (
+                        <button
+                          key={pin.id}
+                          data-testid="saved-marker"
+                          data-item-id={pin.id}
+                          aria-label={`Open punch item: ${pin.title}`}
+                          title={pin.title}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/projects/${id}/punch-list/${pin.id}`);
+                          }}
+                          style={{
+                            position: "absolute",
+                            left: `${x * 100}%`,
+                            top: `${y * 100}%`,
+                            transform: "translate(-50%,-50%)",
+                            width: 30,
+                            height: 30,
+                            borderRadius: "50%",
+                            border: "2px solid white",
+                            background:
+                              pin.status === "COMPLETED"
+                                ? "#16a34a"
+                                : pin.status === "IN_PROGRESS" ? "#d97706" : "#dc2626",
+                            color: "white",
+                            fontWeight: 700,
+                            lineHeight: "24px",
+                            padding: 0,
+                            cursor: "pointer",
+                            zIndex: 2,
+                          }}
+                        >
+                          {index + 1}
+                        </button>
+                      );
+                    })}
                 </div>
               </Document>
             ) : (
-              <div className="photo-placeholder">
-                Upload a PDF to view it here. Then click on the drawing to
-                create a punch item at that location.
-              </div>
+              <p>
+                {loading ? "Loading drawings..." : "Select a drawing to begin."}
+              </p>
             )}
           </div>
-        </div>
+        </section>
       </div>
-
       <p>
-        <Link to={`/projects/${id}`}>← Back to Project Overview</Link>
+        <Link to={`/projects/${id}`}>Back to project overview</Link>
       </p>
     </div>
   );
 }
-
-export default Plans;

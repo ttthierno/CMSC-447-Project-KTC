@@ -1,0 +1,20 @@
+KonTraCk PostgreSQL validation
+Date: 2026-10-19
+Engine: PostgreSQL 17.9, native Windows binaries
+
+PASS: Both initial migrations applied to a new empty database.
+PASS: Optional COMMENT metadata applied.
+PASS: 62 integration assertions in integration.sql, executed under runtime roles.
+PASS: Integration fixtures rolled back after completion.
+PASS: Concurrent last-administrator demotion: one demotion succeeds, the second is rejected and one active administrator remains.
+PASS: Concurrent export workers: two queued jobs produce two distinct claims while the first transaction still holds its lock.
+PASS: Optional seed_demo.sql executed with its synthetic project and evidence records.
+PASS: pg_dump custom-format backup restored to a separate empty database.
+PASS: Restored database retains punch-item count, photo count and RLS policy count.
+PASS: Seeded punch item remains after PostgreSQL server restart.
+PASS: Main local database updated with the final membership function and column descriptions.
+
+Implemented model: 12 tables, 108 columns, 44 SRS functional requirements mapped.
+Source files: 001_schema.sql, 002_access_and_workflows.sql, comments.sql, seed_demo.sql.
+Fixtures are synthetic. Production infrastructure, browser behavior, file-content
+validation and the application ZIP worker are not claimed as implemented or tested.

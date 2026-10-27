@@ -1,13 +1,14 @@
+import { apiFetch } from "../api";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 type Project = {
-  id: number;
+  id: string;
   name: string;
   description: string | null;
-  drawings: { id: number }[];
-  punchItems: { id: number }[];
-  members: { id: number }[];
+  drawings: { id: string }[];
+  punchItems: { id: string }[];
+  members: { id: string }[];
 };
 
 function Projects() {
@@ -22,7 +23,7 @@ function Projects() {
     setError("");
 
     try {
-      const response = await fetch("http://localhost:3000/api/projects", {
+      const response = await apiFetch("/api/projects", {
         credentials: "include",
       });
 
@@ -56,7 +57,7 @@ function Projects() {
     setError("");
 
     try {
-      const response = await fetch("http://localhost:3000/api/projects", {
+      const response = await apiFetch("/api/projects", {
         method: "POST",
         credentials: "include",
         headers: {

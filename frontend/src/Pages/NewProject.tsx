@@ -1,3 +1,4 @@
+import { apiFetch } from "../api";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -17,8 +18,8 @@ function NewProject() {
     setLoading(true);
 
     try {
-      const response = await fetch(
-        "http://localhost:3000/api/projects",
+      const response = await apiFetch(
+        "/api/projects",
         {
           method: "POST",
           credentials: "include",

@@ -1,0 +1,4 @@
+# PDF byte offsets and binary fixtures must survive Windows line-ending settings.
+*.pdf binary
+*.png binary
+*.zip binary

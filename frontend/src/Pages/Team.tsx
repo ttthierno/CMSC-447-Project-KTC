@@ -1,12 +1,13 @@
+import { apiFetch } from "../api";
 
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 type TeamMember = {
-  id: number;
+  id: string;
   role: string;
   user: {
-    id: number;
+    id: string;
     name: string;
     email: string;
   };
@@ -19,9 +20,8 @@ function Team() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);
-  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState("MEMBER");
+  const [role, setRole] = useState("INSPECTOR");
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -38,8 +38,8 @@ function Team() {
       setError("");
 
       try {
-        const response = await fetch(
-          `http://localhost:3000/api/projects/${id}/members`
+        const response = await apiFetch(
+          `/api/projects/${id}/members`
         );
 
         const data = await response.json();
@@ -86,14 +86,14 @@ function Team() {
     setError("");
 
     try {
-      const response = await fetch(
-        `http://localhost:3000/api/projects/${id}/members`,
+      const response = await apiFetch(
+        `/api/projects/${id}/members`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ name, email, role }),
+          body: JSON.stringify({ email, role }),
         }
       );
 
@@ -103,10 +103,9 @@ function Team() {
         throw new Error(data.error || "Could not add team member.");
       }
 
-      setMembers((currentMembers) => [...currentMembers, data]);
-      setName("");
+      setMembers((currentMembers) => [...currentMembers.filter(member => member.id !== data.id), data]);
       setEmail("");
-      setRole("MEMBER");
+      setRole("INSPECTOR");
       setShowForm(false);
     } catch (error) {
       setError(
@@ -159,14 +158,7 @@ function Team() {
         <form onSubmit={addMember} className="project-card">
           <h3>Add a Team Member</h3>
 
-          <label htmlFor="member-name">Full Name</label>
-          <input
-            id="member-name"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            placeholder="Enter member's name"
-            required
-          />
+          <p>Enter the email of an existing verified account. Adding an existing member updates their project role.</p>
 
           <label htmlFor="member-email">Email Address</label>
           <input
@@ -184,7 +176,9 @@ function Team() {
             value={role}
             onChange={(event) => setRole(event.target.value)}
           >
-            <option value="MEMBER">Project Member</option>
+            <option value="INSPECTOR">Inspector</option>
+            <option value="CONTRACTOR">Contractor</option>
+            <option value="REVIEWER">Reviewer</option>
             <option value="ADMIN">Project Administrator</option>
           </select>
 
@@ -218,7 +212,7 @@ function Team() {
                 <span>
                   {member.role === "ADMIN"
                     ? "Project Administrator"
-                    : "Project Member"}
+                    : member.role.charAt(0) + member.role.slice(1).toLowerCase()}
                 </span>
               </div>
 
@@ -227,7 +221,7 @@ function Team() {
                   member.role === "ADMIN" ? "admin" : ""
                 }`}
               >
-                {member.role === "ADMIN" ? "Admin" : "Member"}
+                {member.role.toLowerCase()}
               </span>
             </div>
           ))}

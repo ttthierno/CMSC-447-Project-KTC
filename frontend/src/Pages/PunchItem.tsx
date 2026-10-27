@@ -1,44 +1,46 @@
+import { apiFetch } from "../api";
 
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
-const API_URL = "http://localhost:3000";
+const API_URL = "";
 
 type ProjectMember = {
-  id: number;
+  id: string;
   role: string;
   user: {
-    id: number;
+    id: string;
     name: string;
     email: string;
   };
 };
 
 type PunchComment = {
-  id: number;
+  id: string;
   content: string;
   createdAt: string;
 };
 
 type PunchPhoto = {
-  id: number;
+  id: string;
   fileUrl: string;
   originalName: string;
   createdAt: string;
 };
 
 type PunchItemData = {
-  id: number;
+  version: number;
+  id: string;
   title: string;
   description: string | null;
   status: string;
   priority: string;
-  projectId: number;
-  drawingId: number | null;
+  projectId: string;
+  drawingId: string | null;
   pageNumber: number | null;
   markerX: number | null;
   markerY: number | null;
-  drawing: { id: number; name: string } | null;
+  drawing: { id: string; name: string } | null;
   assignee: ProjectMember | null;
   comments: PunchComment[];
   photos: PunchPhoto[];
@@ -77,8 +79,8 @@ function PunchItem() {
 
       try {
         const [itemsResponse, membersResponse] = await Promise.all([
-          fetch(`${API_URL}/api/projects/${projectId}/punch-items`),
-          fetch(`${API_URL}/api/projects/${projectId}/members`),
+          apiFetch(`${API_URL}/api/projects/${projectId}/punch-items`),
+          apiFetch(`${API_URL}/api/projects/${projectId}/members`),
         ]);
 
         const itemsData = await itemsResponse.json();
@@ -97,7 +99,7 @@ function PunchItem() {
         }
 
         const found = itemsData.find(
-          (entry: PunchItemData) => entry.id === Number(id)
+          (entry: PunchItemData) => entry.id === id
         );
 
         if (!found) {
@@ -135,8 +137,10 @@ function PunchItem() {
   }, [projectId, id]);
 
   async function updateItem(values: {
+    title?: string;
+    description?: string;
     status?: string;
-    assigneeId?: number | null;
+    assigneeId?: string | null;
   }) {
     if (!projectId || !id || !item) return;
 
@@ -145,14 +149,14 @@ function PunchItem() {
     setMessage("");
 
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_URL}/api/projects/${projectId}/punch-items/${id}`,
         {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(values),
+          body: JSON.stringify({ ...values, version: item.version }),
         }
       );
 
@@ -197,7 +201,7 @@ function PunchItem() {
     setMessage("");
 
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_URL}/api/projects/${projectId}/punch-items/${id}/comments`,
         {
           method: "POST",
@@ -264,7 +268,7 @@ function PunchItem() {
       const formData = new FormData();
       formData.append("file", file);
 
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_URL}/api/projects/${projectId}/punch-items/${id}/photos`,
         {
           method: "POST",
@@ -342,7 +346,7 @@ function PunchItem() {
           <h2>{item.title}</h2>
 
           <p>
-            Punch-list item #{item.id} ·{" "}
+            Punch-list item #{item.id.slice(0,8)} ·{" "}
             {item.drawing?.name || "No drawing linked"}
             {item.pageNumber ? ` · Page ${item.pageNumber}` : ""}
           </p>
@@ -357,14 +361,20 @@ function PunchItem() {
         </span>
       </div>
 
-      {error && <p role="alert">{error}</p>}
+      {error && <p role="alert">{error} <button onClick={() => window.location.reload()}>Reload item</button></p>}
       {message && <p role="status">{message}</p>}
 
       <div className="punch-detail-layout">
         <div className="punch-detail-main">
           <div className="detail-card">
-            <h3>Description</h3>
-            <p>{item.description || "No description provided."}</p>
+            <h3>Edit punch item</h3>
+            <form key={item.version} onSubmit={event => { event.preventDefault(); const data = new FormData(event.currentTarget); void updateItem({title: String(data.get('title')), description: String(data.get('description'))}); }}>
+              <label htmlFor="edit-title">Title</label><input id="edit-title" name="title" defaultValue={item.title} maxLength={200} required />
+              <label htmlFor="edit-description">Description</label><textarea id="edit-description" name="description" defaultValue={item.description || ''} maxLength={10000} rows={4} required />
+              <p>Saved version {item.version}. The drawing location stays fixed.</p>
+              <button className="primary-button" type="submit" disabled={saving}>Save item</button>
+            </form>
+            <Link to={`/projects/${item.projectId}/plans?drawingId=${item.drawingId}&page=${item.pageNumber}`}>View saved marker on drawing</Link>
           </div>
 
           <div className="detail-card">
@@ -505,7 +515,7 @@ function PunchItem() {
               onChange={(event) =>
                 updateItem({
                   assigneeId: event.target.value
-                    ? Number(event.target.value)
+                    ? event.target.value
                     : null,
                 })
               }
@@ -533,7 +543,8 @@ function PunchItem() {
             >
               <option value="OPEN">Open</option>
               <option value="IN_PROGRESS">In Progress</option>
-              <option value="COMPLETED">Completed</option>
+              <option value="READY_FOR_REVIEW">Ready for review</option>
+              <option value="COMPLETED">Closed</option>
             </select>
 
             {saving && <p>Saving changes...</p>}
