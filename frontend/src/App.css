@@ -2109,3 +2109,16 @@ select:focus {
 select option:disabled {
   color: #9aa4b2;
 }
+/* Edit Project modal button alignment */
+.edit-project-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.edit-project-actions button {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+}
