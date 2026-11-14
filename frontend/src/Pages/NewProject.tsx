@@ -87,15 +87,17 @@ function NewProject() {
 
         {error && <p role="alert">{error}</p>}
 
-        <button
-          type="submit"
-          className="primary-button"
-          disabled={loading}
-        >
-          {loading ? "Creating Project..." : "Create Project"}
-        </button>
+        <div className="new-project-actions">
+          <button
+            type="submit"
+            className="primary-button"
+            disabled={loading}
+          >
+            {loading ? "Creating Project..." : "Create Project"}
+          </button>
 
-        <Link to="/projects">Cancel</Link>
+          <Link to="/projects">Cancel</Link>
+        </div>
       </form>
     </div>
   );

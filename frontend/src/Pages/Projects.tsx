@@ -6,6 +6,7 @@ type Project = {
   id: string;
   name: string;
   description: string | null;
+  currentRole: string;
   drawings: { id: string }[];
   punchItems: { id: string }[];
   members: { id: string }[];
@@ -18,6 +19,8 @@ function Projects() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState("");
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   async function loadProjects() {
     setError("");
@@ -90,6 +93,46 @@ function Projects() {
       );
     }
   }
+  async function deleteProject() {
+  if (!projectToDelete || deleting) return;
+
+  setDeleting(true);
+  setError("");
+
+  try {
+    const response = await apiFetch(
+      `/api/projects/${projectToDelete.id}`,
+      {
+        method: "DELETE",
+        credentials: "include",
+      }
+    );
+
+    if (!response.ok) {
+      const details = await response.text();
+      throw new Error(
+        `Could not delete project (${response.status}): ${details}`
+      );
+    }
+
+    // Remove archived project from the visible list
+    setProjects((previous) =>
+      previous.filter((project) => project.id !== projectToDelete.id)
+    );
+
+    // Close confirmation dialog
+    setProjectToDelete(null);
+  } catch (err) {
+    console.error("Delete project error:", err);
+    setError(
+      err instanceof Error
+        ? err.message
+        : "Could not delete project. Please try again."
+    );
+  } finally {
+    setDeleting(false);
+  }
+}
 
   return (
     <div className="page">
@@ -167,16 +210,66 @@ function Projects() {
                 </div>
               </div>
 
-              <Link
-                to={`/projects/${project.id}`}
-                className="view-project"
-              >
-                View Project →
-              </Link>
+              <div className="project-actions">
+                <Link to={`/projects/${project.id}`} className="view-project">
+                  View Project →
+                </Link>
+
+                {project.currentRole === "ADMIN" && (
+                  <button
+                    type="button"
+                    className="delete-project-button"
+                    onClick={() => setProjectToDelete(project)}
+                  >
+                    Delete Project
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>
       )}
+        {projectToDelete && (
+    <div className="delete-confirmation-overlay">
+      <div
+        className="delete-confirmation-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="delete-dialog-title"
+      >
+        <h3 id="delete-dialog-title">Delete Project?</h3>
+
+        <p>
+          Are you sure you want to remove
+          <strong> {projectToDelete.name}</strong>?
+        </p>
+
+        <p>
+          This project will be archived and removed from your
+          project list. Its data will be preserved.
+        </p>
+
+        <div className="project-actions">
+          <button
+            type="button"
+            disabled={deleting}
+            onClick={() => setProjectToDelete(null)}
+          >
+            Cancel
+          </button>
+
+          <button
+            type="button"
+            className="delete-project-button"
+            disabled={deleting}
+            onClick={deleteProject}
+          >
+            {deleting ? "Deleting..." : "Confirm Delete"}
+          </button>
+        </div>
+      </div>
+    </div>
+  )}
     </div>
   );
 }
