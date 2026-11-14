@@ -108,7 +108,7 @@ async function projectRole(db: PoolClient, pid: string, allowed?: string[]) {
   const {
     rows: [p],
   } = await db.query(
-    "SELECT *,ktc.role_in_project(project_id) AS role FROM ktc.project WHERE project_id=$1",
+    "SELECT *,ktc.role_in_project(project_id) AS role FROM ktc.project WHERE project_id=$1 AND archived_at IS NULL",
     [pid],
   );
   if (!p) throw new HttpError(404, "Project not found");
@@ -213,7 +213,7 @@ app.get("/api/projects", async (_req, res) =>
   res.json(
     await asActor(actor(res), async (db) => {
       const { rows } = await db.query(
-        "SELECT project_id FROM ktc.project ORDER BY created_at DESC",
+        "SELECT project_id FROM ktc.project WHERE archived_at IS NULL ORDER BY created_at DESC",
       );
       const result = [];
       for (const p of rows) result.push(await project(db, p.project_id));
@@ -242,6 +242,27 @@ app.post("/api/projects", async (req, res) => {
     return project(db, p.id);
   });
   res.status(201).json(data);
+});
+app.delete("/api/projects/:id", async (req, res) => {
+  const pid = uuid(req.params.id);
+
+  await asActor(actor(res), async (db) => {
+    await projectRole(db, pid, ["administrator"]);
+
+    const result = await db.query(
+      `UPDATE ktc.project
+       SET archived_at = NOW()
+       WHERE project_id = $1
+         AND archived_at IS NULL`,
+      [pid],
+    );
+
+    if (result.rowCount !== 1) {
+      throw new HttpError(404, "Project not found or already archived");
+    }
+  });
+
+  res.status(204).send();
 });
 app.get("/api/projects/:id/members", async (req, res) =>
   res.json(
