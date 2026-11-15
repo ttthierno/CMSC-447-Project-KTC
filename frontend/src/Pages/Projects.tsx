@@ -21,6 +21,14 @@ function Projects() {
   const [error, setError] = useState("");
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [deleting, setDeleting] = useState(false);
+  // Project currently being edited
+  const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
+  // Values displayed in the editing form
+  const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  // Track saving and editing errors
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editError, setEditError] = useState("");
 
   async function loadProjects() {
     setError("");
@@ -133,6 +141,70 @@ function Projects() {
     setDeleting(false);
   }
 }
+function openEditProject(project: Project) {
+  // Store the project being edited
+  setProjectToEdit(project);
+
+  // Populate the form with its current values
+  setEditName(project.name);
+  setEditDescription(project.description ?? "");
+
+  // Clear previous errors
+  setEditError("");
+}
+async function saveEditProject(event: React.FormEvent<HTMLFormElement>) {
+  event.preventDefault();
+
+  if (!projectToEdit || savingEdit) return;
+
+  setSavingEdit(true);
+  setEditError("");
+
+  try {
+    const response = await apiFetch(
+      `/api/projects/${projectToEdit.id}`,
+      {
+        method: "PATCH",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: editName.trim(),
+          description: editDescription.trim(),
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const details = await response.text();
+      throw new Error(
+        `Could not update project (${response.status}): ${details}`
+      );
+    }
+
+    const updatedProject: Project = await response.json();
+
+    // Update the project card without reloading the page
+    setProjects((previous) =>
+      previous.map((project) =>
+        project.id === updatedProject.id ? updatedProject : project
+      )
+    );
+
+    // Close the editor after a successful save
+    setProjectToEdit(null);
+  } catch (err) {
+    console.error("Edit project error:", err);
+    setEditError(
+      err instanceof Error
+        ? err.message
+        : "Could not update project. Please try again."
+    );
+  } finally {
+    setSavingEdit(false);
+  }
+}
 
   return (
     <div className="page">
@@ -210,10 +282,19 @@ function Projects() {
                 </div>
               </div>
 
-              <div className="project-actions">
+              <div className="project-actions edit-project-actions">
                 <Link to={`/projects/${project.id}`} className="view-project">
                   View Project →
                 </Link>
+                {project.currentRole === "ADMIN" && (
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => openEditProject(project)}
+                  >
+                    Edit Project
+                  </button>
+                )}
 
                 {project.currentRole === "ADMIN" && (
                   <button
@@ -269,6 +350,70 @@ function Projects() {
         </div>
       </div>
     </div>
+  )}
+  {projectToEdit && (
+  <div className="delete-confirmation-overlay">
+    <div
+      className="delete-confirmation-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="edit-dialog-title"
+    >
+      <h3 id="edit-dialog-title">Edit Project</h3>
+
+      <form onSubmit={saveEditProject}>
+        <label htmlFor="edit-project-name">
+          Project Name
+        </label>
+
+        <input
+          id="edit-project-name"
+          type="text"
+          value={editName}
+          onChange={(event) => setEditName(event.target.value)}
+          maxLength={160}
+          required
+        />
+
+        <label htmlFor="edit-project-description">
+          Description
+        </label>
+
+        <textarea
+          id="edit-project-description"
+          value={editDescription}
+          onChange={(event) =>
+            setEditDescription(event.target.value)
+          }
+          maxLength={10000}
+          rows={5}
+        />
+
+        {editError && (
+          <p role="alert">{editError}</p>
+        )}
+
+        <div className="project-actions">
+          <button
+            type="button"
+            className="secondary-button"
+            disabled={savingEdit}
+            onClick={() => setProjectToEdit(null)}
+          >
+            Cancel
+          </button>
+
+          <button
+            type="submit"
+            className="primary-button"
+            disabled={savingEdit || !editName.trim()}
+          >
+            {savingEdit ? "Saving..." : "Save Changes"}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
   )}
     </div>
   );

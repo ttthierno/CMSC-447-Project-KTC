@@ -243,6 +243,62 @@ app.post("/api/projects", async (req, res) => {
   });
   res.status(201).json(data);
 });
+// Update an existing project's name and description
+app.patch("/api/projects/:id", async (req, res) => {
+  const pid = uuid(req.params.id);
+
+  // Validate the incoming request
+  const body = req.body;
+
+  if (
+    !body ||
+    typeof body !== "object" ||
+    Array.isArray(body) ||
+    Object.keys(body).some(
+      (key) => !["name", "description"].includes(key)
+    ) ||
+    !("name" in body && "description" in body)
+  ) {
+    throw new HttpError(400, "Provide only name and description");
+  }
+
+  const name = requiredText(body.name, 160, "Project name");
+
+  if (
+    body.description !== null &&
+    typeof body.description !== "string"
+  ) {
+    throw new HttpError(400, "Invalid project description");
+  }
+
+  const description = body.description?.trim() || null;
+
+  if (description && description.length > 10000) {
+    throw new HttpError(400, "Description is too long");
+  }
+
+  // Run the update with the authenticated user's permissions
+  const data = await asActor(actor(res), async (db) => {
+    await projectRole(db, pid, ["administrator"]);
+
+    const result = await db.query(
+      `UPDATE ktc.project
+       SET name = $1,
+           description = $2
+       WHERE project_id = $3
+         AND archived_at IS NULL`,
+      [name, description, pid],
+    );
+
+    if (result.rowCount !== 1) {
+      throw new HttpError(404, "Project not found");
+    }
+
+    return project(db, pid);
+  });
+
+  res.json(data);
+});
 app.delete("/api/projects/:id", async (req, res) => {
   const pid = uuid(req.params.id);
 
